@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avadhi Nidhi V3 - Fund & SahayaNidhi Management</title>
+  
+  <!-- Tailwind CSS CDN with configuration -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- TOP APP HEADER -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-900/30 text-white font-bold text-lg">
+          AN
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-base sm:text-lg font-bold text-white tracking-tight">Avadhi Nidhi</h1>
+            <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">V3</span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Fund Management & SahayaNidhi Welfare</p>
+        </div>
+      </div>
+
+      <!-- Sync Status & User Role Switcher -->
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        
+        <!-- Live Sync Status Badge -->
+        <div id="sync-status-badge" class="hidden sm:flex items-center px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/80">
+          <span class="w-2 h-2 rounded-full bg-slate-400 mr-1.5"></span>
+          <span class="text-xs text-slate-300">Loading...</span>
+        </div>
+
+        <!-- Refresh Button -->
+        <button id="btn-refresh-data" title="Sync with Google Sheet" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        </button>
+
+        <!-- Current User Role & Switcher -->
+        <div class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 rounded-xl px-2.5 py-1">
+          <div class="text-right hidden md:block">
+            <div id="header-user-name" class="text-xs font-semibold text-slate-200">Shuhaib Muhammed C.</div>
+            <div id="header-user-role" class="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 inline-block">Admin</div>
+          </div>
+          <!-- User Switcher Dropdown (Allows testing Admin vs Member view) -->
+          <select id="user-switcher-select" class="bg-slate-900 text-slate-200 text-xs rounded border border-slate-700 px-2 py-1 outline-none focus:border-emerald-500 cursor-pointer">
+            <option value="Shuhaib Muhammed C.">Shuhaib Muhammed C. (Admin)</option>
+          </select>
+        </div>
+
+        <!-- Settings Button -->
+        <button id="btn-open-settings" title="Google Sheet & API Settings" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        </button>
+
+        <!-- Mobile Menu Button -->
+        <button id="mobile-menu-btn" class="sm:hidden p-2 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- MAIN NAVIGATION TABS -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800/80">
+      <nav class="hidden sm:flex space-x-1 py-2 overflow-x-auto" aria-label="Tabs">
+        <button data-tab-target="dashboard" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white shadow-md flex items-center space-x-1.5 transition-all">
+          <span>📊</span><span>Dashboard</span>
+        </button>
+        <button data-tab-target="monthly" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 flex items-center space-x-1.5 transition-all">
+          <span>💳</span><span>Monthly Payments</span>
+        </button>
+        <button data-tab-target="sahayanidhi" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 flex items-center space-x-1.5 transition-all">
+          <span>🤝</span><span>SahayaNidhi</span>
+        </button>
+        <button data-tab-target="loans" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 flex items-center space-x-1.5 transition-all">
+          <span>📑</span><span>Loans (Emergency & Vacation)</span>
+        </button>
+        <button data-tab-target="transactions" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 flex items-center space-x-1.5 transition-all">
+          <span>📜</span><span>TransactionsDB</span>
+        </button>
+        <button data-tab-target="members" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 flex items-center space-x-1.5 transition-all">
+          <span>👥</span><span>Members</span>
+        </button>
+      </nav>
+
+      <!-- Mobile Navigation Drawer -->
+      <div id="mobile-nav" class="hidden sm:hidden py-3 space-y-1">
+        <button data-tab-target="dashboard" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white">📊 Dashboard</button>
+        <button data-tab-target="monthly" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800">💳 Monthly Payments</button>
+        <button data-tab-target="sahayanidhi" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800">🤝 SahayaNidhi (Charity)</button>
+        <button data-tab-target="loans" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800">📑 Loans (Emergency & Vacation)</button>
+        <button data-tab-target="transactions" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800">📜 TransactionsDB</button>
+        <button data-tab-target="members" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800">👥 Members</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- 1. DASHBOARD PANEL -->
+    <div id="panel-dashboard" class="tab-panel space-y-6">
+      
+      <!-- Key Metric KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Metric 1: Available Liquid Cash -->
+        <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/80 border border-emerald-500/30 shadow-lg relative overflow-hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Available Fund Cash</span>
+            <span class="text-emerald-400 bg-emerald-500/10 p-2 rounded-xl text-lg">💰</span>
+          </div>
+          <div id="dash-liquid-cash" class="text-2xl sm:text-3xl font-black text-white mt-2">0 AED</div>
+          <p class="text-[11px] text-slate-400 mt-1">Liquid balance in fund bank / cash</p>
+        </div>
+
+        <!-- Metric 2: Total Member Savings -->
+        <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/80 border border-slate-700/60 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Member Savings</span>
+            <span class="text-blue-400 bg-blue-500/10 p-2 rounded-xl text-lg">📈</span>
+          </div>
+          <div id="dash-total-savings" class="text-2xl sm:text-3xl font-black text-white mt-2">0 AED</div>
+          <p class="text-[11px] text-slate-400 mt-1">Sum of member opening + monthly savings</p>
+        </div>
+
+        <!-- Metric 3: SahayaNidhi Charity Pool -->
+        <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/80 border border-teal-500/30 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-teal-400">SahayaNidhi Charity Pool</span>
+            <span class="text-teal-400 bg-teal-500/10 p-2 rounded-xl text-lg">🤝</span>
+          </div>
+          <div id="dash-sahaya-pool" class="text-2xl sm:text-3xl font-black text-teal-300 mt-2">0 AED</div>
+          <p class="text-[11px] text-slate-400 mt-1">5 AED monthly deduction fund for charity</p>
+        </div>
+
+        <!-- Metric 4: Active Loans Outstanding -->
+        <div class="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/80 border border-amber-500/30 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Active Loans Out</span>
+            <span class="text-amber-400 bg-amber-500/10 p-2 rounded-xl text-lg">📑</span>
+          </div>
+          <div id="dash-active-loans" class="text-2xl sm:text-3xl font-black text-amber-300 mt-2">0 AED</div>
+          <p class="text-[11px] text-slate-400 mt-1">Total borrowed by members awaiting repayment</p>
+        </div>
+
+      </div>
+
+      <!-- Logged-in Personal Account Widget -->
+      <div id="dash-personal-widget"></div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex flex-wrap gap-3 items-center justify-between bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+        <div>
+          <h3 class="text-sm font-bold text-white">Quick Fund Actions</h3>
+          <p class="text-xs text-slate-400">Instant shortcuts for fund administration and member requests</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button id="btn-record-payment" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-900/30 flex items-center space-x-1.5 transition-all">
+            <span>💳</span><span>Record Payment (105 AED)</span>
+          </button>
+          <button id="btn-issue-loan" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-900/30 flex items-center space-x-1.5 transition-all">
+            <span>📑</span><span>Issue Loan</span>
+          </button>
+          <button id="btn-sahaya-expense" class="px-3.5 py-2 bg-teal-700 hover:bg-teal-600 text-white rounded-xl text-xs font-bold shadow-md flex items-center space-x-1.5 transition-all">
+            <span>🤝</span><span>Charity Expense</span>
+          </button>
+          <button id="btn-trigger-sahaya" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all">
+            <span>⚙️</span><span>Run 5 AED Deduction</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dashboard Members Summary Table -->
+      <div class="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white">Members Fund Standing</h3>
+            <p class="text-xs text-slate-400">Real-time balances, dues, and loan status for all 14 members</p>
+          </div>
+          <span class="text-xs text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">14 Members</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3">#</th>
+                <th class="px-4 py-3">Member Name</th>
+                <th class="px-4 py-3">Opening Balance (Dec-2026)</th>
+                <th class="px-4 py-3">Current Savings</th>
+                <th class="px-4 py-3">Active Loan</th>
+                <th class="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="dash-members-tbody" class="divide-y divide-slate-800/60">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 2. MONTHLY PAYMENTS PANEL -->
+    <div id="panel-monthly" class="tab-panel hidden space-y-6">
+      
+      <!-- Explainer Banner -->
+      <div class="p-5 rounded-2xl bg-gradient-to-r from-emerald-950/50 via-slate-900 to-slate-900 border border-emerald-500/30 flex items-start space-x-4">
+        <div class="text-2xl">💡</div>
+        <div>
+          <h3 class="text-base font-bold text-white">Monthly 105 AED Contribution Structure</h3>
+          <p class="text-xs text-slate-300 mt-1 leading-relaxed">
+            Every month each member pays <strong class="text-white">105 AED</strong>. 
+            From this, <strong class="text-emerald-400">100 AED</strong> goes into their personal monthly savings balance, 
+            and <strong class="text-teal-400">5 AED</strong> is deducted automatically into the <strong class="text-teal-400">SahayaNidhi Charity Fund</strong>.
+            Even if a member misses a monthly savings contribution, the compulsory 5 AED SahayaNidhi deduction remains active.
+          </p>
+        </div>
+      </div>
+
+      <!-- Month by Month Payment Matrix -->
+      <div class="bg-slate-900/80 rounded-2xl border border-slate-800 p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-white">Monthly Payment Status Matrix</h3>
+            <p class="text-xs text-slate-400">Tracking payment status for each member across upcoming months</p>
+          </div>
+        </div>
+        <div id="monthly-matrix-grid"></div>
+      </div>
+
+      <!-- Recent Monthly Payments List -->
+      <div class="bg-slate-900/80 rounded-2xl border border-slate-800 p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-white">Recent Payment Receipts</h3>
+            <p class="text-xs text-slate-400">Record of savings contributions received</p>
+          </div>
+          <button onclick="document.getElementById('btn-record-payment').click()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold">
+            + New Payment
+          </button>
+        </div>
+        <div id="monthly-payments-history" class="space-y-3">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3. SAHAYANIDHI (CHARITY) PANEL -->
+    <div id="panel-sahayanidhi" class="tab-panel hidden space-y-6">
+      
+      <!-- Sahaya Header Stats -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-5 rounded-2xl bg-teal-950/40 border border-teal-500/30">
+          <span class="text-xs font-semibold text-teal-400 uppercase">Current SahayaNidhi Pool</span>
+          <div id="sahaya-tab-pool" class="text-3xl font-black text-white mt-1">0 AED</div>
+          <p class="text-[11px] text-slate-400 mt-1">Net available balance dedicated to charity</p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <span class="text-xs font-semibold text-slate-400 uppercase">Total Collected (5 AED / member)</span>
+          <div id="sahaya-tab-collected" class="text-2xl font-bold text-emerald-400 mt-1">0 AED</div>
+          <p class="text-[11px] text-slate-400 mt-1">Accumulated compulsory member contributions</p>
+        </div>
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <span class="text-xs font-semibold text-slate-400 uppercase">Total Charity Disbursed</span>
+          <div id="sahaya-tab-disbursed" class="text-2xl font-bold text-rose-400 mt-1">0 AED</div>
+          <p class="text-[11px] text-slate-400 mt-1">Total grants and charity aid distributed</p>
+        </div>
+      </div>
+
+      <!-- Sahaya Actions Bar -->
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h4 class="text-sm font-bold text-white">SahayaNidhi Operations</h4>
+          <p class="text-xs text-slate-400">Manage monthly 5 AED deductions and charity disbursements</p>
+        </div>
+        <div class="flex space-x-2">
+          <button onclick="document.getElementById('btn-sahaya-expense').click()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold">
+            Record Charity Grant / Expense
+          </button>
+          <button onclick="document.getElementById('btn-trigger-sahaya').click()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold">
+            Run Monthly 5 AED Deduction
+          </button>
+        </div>
+      </div>
+
+      <!-- SahayaNidhi Ledger Table -->
+      <div class="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+        <div class="p-4 border-b border-slate-800">
+          <h3 class="text-base font-bold text-white">SahayaNidhi Ledger & Audit Trail</h3>
+          <p class="text-xs text-slate-400">Every 5 AED deduction and charity expense recorded transparently</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3">Date</th>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">Member</th>
+                <th class="px-4 py-3">Amount</th>
+                <th class="px-4 py-3">Cause / Purpose</th>
+                <th class="px-4 py-3">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="sahaya-ledger-tbody" class="divide-y divide-slate-800/60">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 4. LOANS (EMERGENCY & VACATION) PANEL -->
+    <div id="panel-loans" class="tab-panel hidden space-y-6">
+      
+      <!-- Loan Rules Card -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Emergency Loan Rules -->
+        <div class="p-5 rounded-2xl bg-gradient-to-br from-amber-950/40 to-slate-900 border border-amber-500/30">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">⚡</span>
+            <h4 class="text-base font-bold text-amber-300">Emergency Loan Policy</h4>
+          </div>
+          <ul class="mt-3 space-y-1.5 text-xs text-slate-300">
+            <li>• <strong class="text-white">Eligibility:</strong> Urgent cases, approved and issued within days.</li>
+            <li>• <strong class="text-white">Max Amount:</strong> 2,500 AED.</li>
+            <li>• <strong class="text-white">Annual Limit:</strong> Max 1 Emergency Loan per member per calendar year.</li>
+            <li>• <strong class="text-amber-300">Repayment Duration:</strong> 1 month excluding remaining days of current month. <em>(E.g.: Issued 21 Oct 2026 → Due on or before 30 Nov 2026).</em></li>
+          </ul>
+        </div>
+
+        <!-- Vacation Loan Rules -->
+        <div class="p-5 rounded-2xl bg-gradient-to-br from-blue-950/40 to-slate-900 border border-blue-500/30">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">✈️</span>
+            <h4 class="text-base font-bold text-blue-300">Vacation Loan Policy</h4>
+          </div>
+          <ul class="mt-3 space-y-1.5 text-xs text-slate-300">
+            <li>• <strong class="text-white">Eligibility:</strong> Members traveling for vacation.</li>
+            <li>• <strong class="text-white">Max Amount:</strong> 2,500 AED.</li>
+            <li>• <strong class="text-white">Annual Limit:</strong> Max 1 Vacation Loan per member per calendar year.</li>
+            <li>• <strong class="text-blue-300">Advance Notice:</strong> Must request minimum <strong>25 days</strong> prior to the loan need date.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="flex justify-between items-center bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+        <div>
+          <h4 class="text-sm font-bold text-white">Loan Management</h4>
+          <p class="text-xs text-slate-400">Track active loans, calculate repayment due dates, and record repayments</p>
+        </div>
+        <button onclick="document.getElementById('btn-issue-loan').click()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow">
+          + Request / Issue New Loan
+        </button>
+      </div>
+
+      <!-- Active Loans Section -->
+      <div class="space-y-4">
+        <h3 class="text-base font-bold text-white">Active Outstanding Loans</h3>
+        <div id="loans-active-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <!-- Repaid Loans Archive -->
+      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5">
+        <h4 class="text-sm font-bold text-slate-300 mb-3">Completed / Repaid Loans Archive</h4>
+        <div id="loans-past-list" class="space-y-2">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 5. TRANSACTIONS DB PANEL -->
+    <div id="panel-transactions" class="tab-panel hidden space-y-6">
+      
+      <!-- Search & Filters -->
+      <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col md:flex-row gap-3 items-center justify-between">
+        
+        <!-- Filter Controls -->
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <!-- Search box -->
+          <input id="tx-filter-search" type="text" placeholder="Search transactions..." class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-emerald-500 outline-none w-full sm:w-48">
+
+          <!-- Type Filter -->
+          <select id="tx-filter-type" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none cursor-pointer">
+            <option value="ALL">All Types</option>
+            <option value="Monthly Payment">Monthly Payment</option>
+            <option value="SahayaNidhi">SahayaNidhi</option>
+            <option value="Loan issued">Loan Issued</option>
+            <option value="Loan Repayment">Loan Repayment</option>
+          </select>
+
+          <!-- Member Filter -->
+          <select id="tx-filter-member" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none cursor-pointer">
+            <option value="ALL">All Members</option>
+          </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center space-x-2 w-full md:w-auto justify-end">
+          <button id="btn-export-csv" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 flex items-center space-x-1">
+            <span>📥</span><span>Export CSV</span>
+          </button>
+          <button id="btn-add-manual-tx" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1">
+            <span>+</span><span>Manual Entry</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Transactions DB Table (Matching Google Sheet) -->
+      <div class="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+          <div>
+            <h3 class="text-base font-bold text-white">TransactionsDB Master Ledger</h3>
+            <p class="text-xs text-slate-400">Directly mirrored with Google Sheet sheet: TransactionsDB</p>
+          </div>
+          <span class="text-xs font-mono text-slate-500">Sheet: TransactionsDB</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3">Date</th>
+                <th class="px-4 py-3">Member_Name</th>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">Amount</th>
+                <th class="px-4 py-3">Updated By UserName</th>
+                <th class="px-4 py-3">Updated By Date</th>
+              </tr>
+            </thead>
+            <tbody id="transactions-tbody" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 6. MEMBERS DIRECTORY PANEL -->
+    <div id="panel-members" class="tab-panel hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white">Avadhi Nidhi Members Directory</h3>
+          <p class="text-xs text-slate-400">14 fund members, opening balances, roles, and contact info</p>
+        </div>
+      </div>
+
+      <div id="members-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-auto border-t border-slate-800 bg-slate-950 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>Avadhi Nidhi V3 Fund Management System</div>
+      <div class="flex items-center space-x-3">
+        <a href="https://docs.google.com/spreadsheets/d/1nM27j5h8wQNhElx0GkGSez44SFFt0WD8hemEfPV9te8/edit?gid=0#gid=0" target="_blank" class="hover:text-emerald-400 transition-colors">
+          Open Google Sheet ↗
+        </a>
+        <span>•</span>
+        <button onclick="document.getElementById('btn-open-settings').click()" class="hover:text-emerald-400 transition-colors">
+          API & Settings
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- MODAL 1: RECORD MONTHLY PAYMENT -->
+  <div id="modal-record-payment" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>💳</span><span>Record Monthly Payment</span>
+        </h3>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form id="form-record-payment" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Select Member *</label>
+          <select id="payment-member-select" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 cursor-pointer">
+            <!-- Filled via JS -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Total Paid (AED) *</label>
+          <input id="payment-amount-input" type="number" step="any" min="5" value="105" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 font-mono">
+          <p class="text-[11px] text-slate-400 mt-1">Standard monthly amount is 105 AED.</p>
+        </div>
+
+        <!-- Real-time split preview -->
+        <div id="payment-split-preview"></div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Payment Date *</label>
+          <input id="payment-date-input" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex justify-end space-x-2">
+          <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/30">Submit Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ISSUE / REQUEST LOAN -->
+  <div id="modal-issue-loan" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>📑</span><span>Issue Fund Loan</span>
+        </h3>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form id="form-issue-loan" class="mt-4 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Member *</label>
+            <select id="loan-member-select" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 cursor-pointer">
+              <!-- Filled via JS -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Loan Type *</label>
+            <select id="loan-type-select" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 cursor-pointer">
+              <option value="Emergency Loan">⚡ Emergency Loan</option>
+              <option value="Vacation Loan">✈️ Vacation Loan</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Loan Amount (Max 2,500 AED) *</label>
+          <input id="loan-amount-input" type="number" max="2500" min="100" value="1000" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-blue-500 font-mono">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Request Date *</label>
+            <input id="loan-request-date" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Issue Date *</label>
+            <input id="loan-issue-date" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+          </div>
+        </div>
+
+        <!-- Vacation Loan Specific: Needed Date (25-day check) -->
+        <div id="loan-vacation-notice-group" class="hidden">
+          <label class="block text-xs font-semibold text-blue-300 mb-1">Vacation Date Needed (Min 25 days notice) *</label>
+          <input id="loan-needed-date" type="date" class="w-full bg-slate-950 border border-blue-500/50 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <!-- Auto-calculated Due Date box -->
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
+          <div class="text-slate-400">Repayment Due Date (Calculated):</div>
+          <div id="loan-due-date-display" class="font-bold text-amber-300 text-sm">--</div>
+          <p class="text-[10px] text-slate-500">Duration: 1 month excluding remaining days of current month.</p>
+        </div>
+
+        <!-- Quota warning container -->
+        <div id="loan-quota-warning" class="hidden"></div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Notes / Purpose</label>
+          <input id="loan-notes" type="text" placeholder="e.g. Urgent travel / medical / family" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex justify-end space-x-2">
+          <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-900/30">Approve & Issue Loan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: REPAY LOAN -->
+  <div id="modal-repay-loan" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>💰</span><span>Record Loan Repayment</span>
+        </h3>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form id="form-repay-loan" class="mt-4 space-y-4">
+        <input type="hidden" id="repay-loan-id">
+        <input type="hidden" id="repay-member-name">
+
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1 text-xs">
+          <div class="text-slate-400">Borrower:</div>
+          <div id="repay-member-display" class="font-bold text-white text-sm">--</div>
+          <div class="text-slate-400 mt-2">Current Outstanding:</div>
+          <div id="repay-outstanding-display" class="font-black text-rose-400 text-base">--</div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Repayment Amount (AED) *</label>
+          <input id="repay-amount-input" type="number" step="any" min="1" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono outline-none focus:border-emerald-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Repayment Date *</label>
+          <input id="repay-date-input" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex justify-end space-x-2">
+          <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">Record Repayment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: SAHAYA EXPENSE / CHARITY GRANT -->
+  <div id="modal-sahaya-expense" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>🤝</span><span>Record Charity Expense</span>
+        </h3>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form id="form-sahaya-expense" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Charity Grant Amount (AED) *</label>
+          <input id="sahaya-expense-amount" type="number" min="1" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono outline-none focus:border-rose-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Beneficiary or Welfare Cause *</label>
+          <input id="sahaya-expense-cause" type="text" placeholder="e.g. Medical emergency assistance, flood relief, education" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Date *</label>
+          <input id="sahaya-expense-date" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Notes / Approval details</label>
+          <input id="sahaya-expense-notes" type="text" placeholder="Approved by members" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex justify-end space-x-2">
+          <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold">Disburse Charity Grant</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 5: TRIGGER MONTHLY SAHAYA DEDUCTION -->
+  <div id="modal-trigger-sahaya" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>⚙️</span><span>Batch 5 AED Monthly Deduction</span>
+        </h3>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form id="form-trigger-sahaya" class="mt-4 space-y-4">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          This operation will record the compulsory <strong>5 AED</strong> SahayaNidhi deduction in <code class="text-emerald-400">TransactionsDB</code> for all 14 members for the selected month.
+        </p>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Target Month (e.g. Dec-2026, Jan-2027) *</label>
+          <input id="trigger-sahaya-month" type="text" placeholder="Jan-2027" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Transaction Date *</label>
+          <input id="trigger-sahaya-date" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex justify-end space-x-2">
+          <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold">Apply Deduction (14 Members)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 6: MANUAL TRANSACTION ENTRY -->
+  <div id="modal-manual-tx" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>📜</span><span>Add Manual Ledger Entry</span>
+        </h3>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form id="form-manual-tx" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Member *</label>
+          <select id="manual-tx-member" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+            <!-- Filled via JS -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Type *</label>
+          <select id="manual-tx-type" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+            <option value="Monthly Payment">Monthly Payment</option>
+            <option value="SahayaNidhi">SahayaNidhi</option>
+            <option value="Loan issued">Loan issued</option>
+            <option value="Loan Repayment">Loan Repayment</option>
+            <option value="Adjustment">Adjustment</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Amount (AED) *</label>
+          <input id="manual-tx-amount" type="number" step="any" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Date *</label>
+          <input id="manual-tx-date" type="date" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Notes / Description</label>
+          <input id="manual-tx-notes" type="text" placeholder="Remarks" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex justify-end space-x-2">
+          <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">Add to Ledger</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 7: EDIT MEMBER -->
+  <div id="modal-edit-member" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>👥</span><span>Edit Member Details</span>
+        </h3>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form id="form-edit-member" class="mt-4 space-y-4">
+        <input type="hidden" id="edit-member-sr">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Member Name *</label>
+          <input id="edit-member-name" type="text" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">OB from Dec-2026 (AED) *</label>
+          <input id="edit-member-ob" type="number" step="any" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-mono outline-none">
+          <p class="text-[11px] text-slate-400 mt-1">Can be negative if member has dues from 2026 return.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Phone</label>
+          <input id="edit-member-phone" type="tel" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+          <input id="edit-member-email" type="email" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Role / Type *</label>
+          <select id="edit-member-type" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none">
+            <option value="Member">Member (Read-only)</option>
+            <option value="Admin">Admin (Full Edit)</option>
+          </select>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex justify-end space-x-2">
+          <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 8: MEMBER STATEMENT & AUDIT VIEW -->
+  <div id="modal-member-statement" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div>
+          <h3 id="statement-member-name" class="text-lg font-bold text-white">Member Statement</h3>
+          <span id="statement-member-role" class="text-xs text-emerald-400 font-semibold">Member</span>
+        </div>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <!-- Financial Snapshot -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 py-4 border-b border-slate-800">
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Opening Balance</div>
+          <div id="statement-ob" class="text-sm font-bold text-white mt-1">0 AED</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Current Savings</div>
+          <div id="statement-savings" class="text-sm font-bold text-emerald-400 mt-1">0 AED</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Sahaya Paid</div>
+          <div id="statement-sahaya" class="text-sm font-bold text-teal-400 mt-1">0 AED</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase">Active Loan Debt</div>
+          <div id="statement-loan-debt" class="text-sm font-bold text-amber-400 mt-1">0 AED</div>
+        </div>
+      </div>
+
+      <!-- Statement Ledger -->
+      <div class="flex-1 overflow-y-auto mt-4">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Transaction History</h4>
+        <table class="w-full text-left">
+          <thead class="bg-slate-950 text-[11px] uppercase text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="px-3 py-2">Date</th>
+              <th class="px-3 py-2">Type</th>
+              <th class="px-3 py-2">Amount</th>
+              <th class="px-3 py-2">Updated By</th>
+            </tr>
+          </thead>
+          <tbody id="statement-tx-tbody" class="divide-y divide-slate-800/60 font-mono">
+            <!-- Filled via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-end space-x-2">
+        <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center space-x-1">
+          <span>🖨️</span><span>Print Statement</span>
+        </button>
+        <button data-close-modal class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 9: SETTINGS & GOOGLE SHEET CONNECTION -->
+  <div id="modal-settings" class="modal-overlay hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>⚙️</span><span>Google Sheet API & Settings</span>
+        </h3>
+        <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      </div>
+
+      <form id="form-save-settings" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Google Sheet URL</label>
+          <div class="flex items-center space-x-2">
+            <input type="text" readonly value="https://docs.google.com/spreadsheets/d/1nM27j5h8wQNhElx0GkGSez44SFFt0WD8hemEfPV9te8/edit?gid=0#gid=0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-400 font-mono">
+            <a href="https://docs.google.com/spreadsheets/d/1nM27j5h8wQNhElx0GkGSez44SFFt0WD8hemEfPV9te8/edit?gid=0#gid=0" target="_blank" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold shrink-0">Open Sheet ↗</a>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-emerald-400 mb-1">Google Apps Script Web App URL</label>
+          <input id="settings-api-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none focus:border-emerald-500">
+          <p class="text-[11px] text-slate-400 mt-1">
+            Deploy the provided <code class="text-emerald-300 font-mono">google-apps-script/Code.gs</code> inside your Google Sheet as a Web App ("Execute as: Me", "Who has access: Anyone").
+          </p>
+        </div>
+
+        <div id="settings-connection-status" class="p-3 rounded-xl bg-slate-950 border border-slate-800"></div>
+
+        <div class="flex space-x-2">
+          <button type="button" id="btn-test-connection" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold">
+            Test Connection
+          </button>
+          <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold">
+            Save Web App URL
+          </button>
+        </div>
+
+        <!-- Instructions box -->
+        <div class="pt-4 border-t border-slate-800 space-y-2 text-xs text-slate-400">
+          <h4 class="font-bold text-white">How to connect live to your Google Sheet:</h4>
+          <ol class="list-decimal list-inside space-y-1 leading-relaxed">
+            <li>Open your Google Sheet and click <strong>Extensions → Apps Script</strong>.</li>
+            <li>Copy the code from the file <code class="text-emerald-400 font-mono">google-apps-script/Code.gs</code> in this repo and paste it into Apps Script.</li>
+            <li>Click <strong>Deploy → New deployment</strong>.</li>
+            <li>Select <strong>Web app</strong>. Set <em>Execute as</em>: <strong>Me</strong> and <em>Who has access</em>: <strong>Anyone</strong>.</li>
+            <li>Click <strong>Deploy</strong> and paste the resulting Web App URL above!</li>
+          </ol>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex justify-between items-center">
+          <button type="button" id="btn-reset-demo-data" class="text-xs text-rose-400 hover:underline">
+            Reset Local Storage Cache
+          </button>
+          <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Done</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APPLICATION SCRIPT MODULES -->
+  <script type="module" src="js/data.js"></script>
+  <script type="module" src="js/calculations.js"></script>
+  <script type="module" src="js/sheetsService.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
