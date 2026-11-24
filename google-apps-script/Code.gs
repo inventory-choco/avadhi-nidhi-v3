@@ -1,47 +1,50 @@
 /**
- * Avadhi Nidhi V3 - Google Apps Script Backend
+ * Avadhi Nidhi V3 - Google Apps Script Production Backend API
  * 
  * Spreadsheet: https://docs.google.com/spreadsheets/d/1nM27j5h8wQNhElx0GkGSez44SFFt0WD8hemEfPV9te8/edit
  * 
- * Sheets used:
+ * Main Sheets:
  * 1. Member_Details
  *    Headers: Sr. Num | Name | OB from Dec-2026 | Phone | Email | Type
  * 2. TransactionsDB
  *    Headers: Date | Member_Name | Type | Amount | Updated By UserName | Updated By Date
- * 3. LoansDB (optional/created automatically if missing)
- *    Headers: Loan_ID | Member_Name | Type | Amount | Request_Date | Issue_Date | Due_Date | Status | Repaid_Amount | Repaid_Date | Notes
- * 4. SahayaNidhiDB (optional/created automatically if missing)
+ * 3. LoansDB
+ *    Headers: Loan_ID | Member_Name | Loan_Type | Request_Date | Issue_Date | Principal | Repaid_Amount | Status | Schedule_JSON
+ * 4. ConfigDB
+ *    Headers: Key | Value | Description | Updated_At
+ * 5. SahayaNidhiDB
  *    Headers: Date | Type | Member_Name | Amount | Beneficiary_Or_Cause | Updated_By | Notes
- *
- * HOW TO DEPLOY:
- * 1. Open your Google Sheet
- * 2. Go to Extensions > Apps Script
- * 3. Replace all code in Code.gs with this file
- * 4. Click "Deploy" > "New deployment"
- * 5. Select type: "Web app"
- * 6. Set Description: "Avadhi Nidhi V3 API"
- * 7. Set "Execute as": "Me"
- * 8. Set "Who has access": "Anyone" (allows the GitHub Pages web app to read/write)
- * 9. Click "Deploy", authorize permissions, and copy the Web App URL.
- * 10. Paste the Web App URL in Avadhi Nidhi V3 App Settings.
  */
 
 const SHEET_MEMBERS = "Member_Details";
 const SHEET_TRANSACTIONS = "TransactionsDB";
 const SHEET_LOANS = "LoansDB";
+const SHEET_CONFIG = "ConfigDB";
 const SHEET_SAHAYA = "SahayaNidhiDB";
 
+// Default Configuration
+const DEFAULT_CONFIG = {
+  Max_Loan_Amount: "2500",
+  Monthly_Share: "100",
+  SahayaNidhi_Monthly: "5",
+  Fund_Start_Month: "2026-12"
+};
+
 /**
- * Handle GET requests - Read all data from Google Sheets
+ * Handle GET requests - Read all data & run idempotent checks
  */
 function doGet(e) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     ensureRequiredSheets(ss);
 
+    // Run idempotent monthly SahayaNidhi deduction check (deducts 5 AED per member on 1st of each month if not yet recorded)
+    ensureMonthlySahayaNidhiDeductions(ss);
+
     const members = getSheetData(ss.getSheetByName(SHEET_MEMBERS));
     const transactions = getSheetData(ss.getSheetByName(SHEET_TRANSACTIONS));
     const loans = getSheetData(ss.getSheetByName(SHEET_LOANS));
+    const config = getConfigData(ss.getSheetByName(SHEET_CONFIG));
     const sahaya = getSheetData(ss.getSheetByName(SHEET_SAHAYA));
 
     const response = {
@@ -51,6 +54,7 @@ function doGet(e) {
         members: members,
         transactions: transactions,
         loans: loans,
+        config: config,
         sahayaNidhi: sahaya
       }
     };
@@ -58,6 +62,7 @@ function doGet(e) {
     return ContentService
       .createTextOutput(JSON.stringify(response))
       .setMimeType(ContentService.MimeType.JSON);
+
   } catch (err) {
     return ContentService
       .createTextOutput(JSON.stringify({
@@ -69,7 +74,7 @@ function doGet(e) {
 }
 
 /**
- * Handle POST requests - Add transactions, loans, update members
+ * Handle POST requests - Smart payments, loans, updates, and configuration
  */
 function doPost(e) {
   try {
@@ -89,17 +94,20 @@ function doPost(e) {
     let result = { status: "success" };
 
     switch (action) {
+      case "RECORD_SMART_PAYMENT":
+        result = recordSmartPayment(ss, payload.data);
+        break;
+
       case "ADD_TRANSACTION":
         result = addTransaction(ss, payload.data);
         break;
 
-      case "ADD_BATCH_TRANSACTIONS":
-        result = addBatchTransactions(ss, payload.data);
+      case "EDIT_TRANSACTION":
+        result = editTransaction(ss, payload.data);
         break;
 
-      case "RECORD_MONTHLY_PAYMENT":
-        // Records split: 100 to Monthly Payment, 5 to SahayaNidhi
-        result = recordMonthlyPayment(ss, payload.data);
+      case "VOID_TRANSACTION":
+        result = voidTransaction(ss, payload.data);
         break;
 
       case "ISSUE_LOAN":
@@ -118,8 +126,12 @@ function doPost(e) {
         result = updateMember(ss, payload.data);
         break;
 
-      case "TRIGGER_MONTHLY_SAHAYA_DEDUCTION":
-        result = triggerMonthlySahayaDeductions(ss, payload.data);
+      case "UPDATE_CONFIG":
+        result = updateConfig(ss, payload.data);
+        break;
+
+      case "RUN_MONTHLY_SAHAYA":
+        result = runMonthlySahayaDeductions(ss, payload.data);
         break;
 
       default:
@@ -144,28 +156,39 @@ function doPost(e) {
  * Ensure all required sheets and headers exist
  */
 function ensureRequiredSheets(ss) {
-  // Member_Details
+  // 1. Member_Details
   let memSheet = ss.getSheetByName(SHEET_MEMBERS);
   if (!memSheet) {
     memSheet = ss.insertSheet(SHEET_MEMBERS);
     memSheet.appendRow(["Sr. Num", "Name", "OB from Dec-2026", "Phone", "Email", "Type"]);
   }
 
-  // TransactionsDB
+  // 2. TransactionsDB
   let txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
   if (!txSheet) {
     txSheet = ss.insertSheet(SHEET_TRANSACTIONS);
     txSheet.appendRow(["Date", "Member_Name", "Type", "Amount", "Updated By UserName", "Updated By Date"]);
   }
 
-  // LoansDB
+  // 3. LoansDB
   let loanSheet = ss.getSheetByName(SHEET_LOANS);
   if (!loanSheet) {
     loanSheet = ss.insertSheet(SHEET_LOANS);
-    loanSheet.appendRow(["Loan_ID", "Member_Name", "Type", "Amount", "Request_Date", "Issue_Date", "Due_Date", "Status", "Repaid_Amount", "Repaid_Date", "Notes"]);
+    loanSheet.appendRow(["Loan_ID", "Member_Name", "Loan_Type", "Request_Date", "Issue_Date", "Principal", "Repaid_Amount", "Status", "Schedule_JSON"]);
   }
 
-  // SahayaNidhiDB
+  // 4. ConfigDB
+  let configSheet = ss.getSheetByName(SHEET_CONFIG);
+  if (!configSheet) {
+    configSheet = ss.insertSheet(SHEET_CONFIG);
+    configSheet.appendRow(["Key", "Value", "Description", "Updated_At"]);
+    const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+    Object.keys(DEFAULT_CONFIG).forEach(k => {
+      configSheet.appendRow([k, DEFAULT_CONFIG[k], "Fund Parameter", now]);
+    });
+  }
+
+  // 5. SahayaNidhiDB
   let sahSheet = ss.getSheetByName(SHEET_SAHAYA);
   if (!sahSheet) {
     sahSheet = ss.insertSheet(SHEET_SAHAYA);
@@ -174,7 +197,24 @@ function ensureRequiredSheets(ss) {
 }
 
 /**
- * Convert a sheet's rows to an array of objects
+ * Get Key-Value Config from ConfigDB
+ */
+function getConfigData(sheet) {
+  if (!sheet) return { ...DEFAULT_CONFIG };
+  const rows = getSheetData(sheet);
+  const cfg = { ...DEFAULT_CONFIG };
+  rows.forEach(r => {
+    const k = r["Key"] || r["key"];
+    const v = r["Value"] !== undefined ? String(r["Value"]) : (r["value"] !== undefined ? String(r["value"]) : null);
+    if (k && v !== null) {
+      cfg[k] = v;
+    }
+  });
+  return cfg;
+}
+
+/**
+ * Read structured rows from sheet
  */
 function getSheetData(sheet) {
   if (!sheet) return [];
@@ -186,10 +226,9 @@ function getSheetData(sheet) {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    // Skip completely empty rows
     if (row.every(cell => cell === "" || cell === null)) continue;
 
-    const rowObj = {};
+    const rowObj = { _rowIndex: i + 1 };
     headers.forEach((header, colIdx) => {
       let val = row[colIdx];
       if (val instanceof Date) {
@@ -203,116 +242,265 @@ function getSheetData(sheet) {
 }
 
 /**
- * Add single transaction to TransactionsDB
+ * Idempotent Check: Automatically deduct 5 AED SahayaNidhi per member on 1st of each month
  */
-function addTransaction(ss, data) {
-  const sheet = ss.getSheetByName(SHEET_TRANSACTIONS);
-  const dateStr = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
-  const updatedDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+function ensureMonthlySahayaNidhiDeductions(ss) {
+  const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
+  const memSheet = ss.getSheetByName(SHEET_MEMBERS);
+  const sahSheet = ss.getSheetByName(SHEET_SAHAYA);
+  if (!txSheet || !memSheet) return;
 
-  sheet.appendRow([
-    dateStr,
-    data.memberName,
-    data.type,
-    Number(data.amount),
-    data.updatedBy || "Admin",
-    updatedDate
-  ]);
+  const members = getSheetData(memSheet);
+  if (members.length === 0) return;
 
-  return { status: "success", message: "Transaction added successfully" };
-}
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-based
 
-/**
- * Add batch transactions
- */
-function addBatchTransactions(ss, list) {
-  const sheet = ss.getSheetByName(SHEET_TRANSACTIONS);
-  const updatedDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  // Fund starts December 2026 (2026-12)
+  const startYear = 2026;
+  const startMonth = 11; // December is 11
 
-  const rows = list.map(item => [
-    item.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"),
-    item.memberName,
-    item.type,
-    Number(item.amount),
-    item.updatedBy || "Admin",
-    updatedDate
-  ]);
+  const existingTx = getSheetData(txSheet);
+  const tz = Session.getScriptTimeZone();
+  const nowStr = Utilities.formatDate(now, tz, "yyyy-MM-dd HH:mm:ss");
 
-  if (rows.length > 0) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  const newTxRows = [];
+  const newSahRows = [];
+
+  // Iterate from fund start month up to current month
+  let y = startYear;
+  let m = startMonth;
+
+  while (y < currentYear || (y === currentYear && m <= currentMonth)) {
+    const monthKey = `${y}-${String(m + 1).padStart(2, '0')}`;
+    const deductionDate = `${monthKey}-01`;
+
+    // Only apply if the 1st of this month has already arrived
+    const firstOfTarget = new Date(y, m, 1);
+    if (now >= firstOfTarget) {
+      members.forEach(mem => {
+        const name = mem["Name"] || mem["name"];
+        if (!name) return;
+
+        // Check if deduction already exists for this member in this month
+        const alreadyDeducted = existingTx.some(t => {
+          const tDate = String(t["Date"] || t["date"] || "");
+          const tName = String(t["Member_Name"] || t["member_name"] || "");
+          const tType = String(t["Type"] || t["type"] || "");
+          return tName === name && tType === "SahayaNidhi" && tDate.startsWith(monthKey);
+        });
+
+        if (!alreadyDeducted) {
+          newTxRows.push([
+            deductionDate,
+            name,
+            "SahayaNidhi",
+            5,
+            "SYSTEM_AUTO",
+            nowStr
+          ]);
+
+          newSahRows.push([
+            deductionDate,
+            "Compulsory Monthly Deduction",
+            name,
+            5,
+            `Monthly Charity Deduction (${monthKey})`,
+            "SYSTEM_AUTO",
+            "Auto 1st-of-month deduction"
+          ]);
+        }
+      });
+    }
+
+    m++;
+    if (m > 11) {
+      m = 0;
+      y++;
+    }
   }
 
-  return { status: "success", count: rows.length };
+  if (newTxRows.length > 0) {
+    txSheet.getRange(txSheet.getLastRow() + 1, 1, newTxRows.length, 6).setValues(newTxRows);
+  }
+  if (newSahRows.length > 0 && sahSheet) {
+    sahSheet.getRange(sahSheet.getLastRow() + 1, 1, newSahRows.length, 7).setValues(newSahRows);
+  }
 }
 
 /**
- * Record Monthly Payment with the 100/5 breakdown
+ * Setup Time-driven trigger for monthly deductions (can be executed once)
  */
-function recordMonthlyPayment(ss, data) {
-  const totalPaid = Number(data.totalAmount || 105);
-  const dateStr = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
-  const updatedBy = data.updatedBy || "Admin";
+function setupMonthlyTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "triggerMonthlySahayaExecution") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+
+  // Runs on the 1st of every month at 1:00 AM
+  ScriptApp.newTrigger("triggerMonthlySahayaExecution")
+    .timeBased()
+    .onMonthDay(1)
+    .atHour(1)
+    .create();
+}
+
+function triggerMonthlySahayaExecution() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensureMonthlySahayaNidhiDeductions(ss);
+}
+
+/**
+ * SMART PAYMENT RECORDER:
+ * Atomically writes allocated waterfall parts (SahayaNidhi, Monthly Payment, Loan Repayment)
+ * and updates LoansDB if loan repayment is included!
+ */
+function recordSmartPayment(ss, data) {
+  const date = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   const memberName = data.memberName;
-
-  // Split: 5 goes to SahayaNidhi, remaining goes to Monthly Payment
-  const sahayaPart = 5;
-  const savingsPart = totalPaid - sahayaPart;
-
-  const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
+  const updatedBy = data.updatedBy || "Admin";
   const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
+  const allocations = data.allocations || []; // [{ type: "SahayaNidhi", amount: 5 }, { type: "Monthly Payment", amount: 100 }, ...]
+  const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
   const rowsToAdd = [];
 
-  if (savingsPart > 0) {
-    rowsToAdd.push([dateStr, memberName, "Monthly Payment", savingsPart, updatedBy, now]);
+  allocations.forEach(alloc => {
+    const amt = Number(alloc.amount || 0);
+    if (amt > 0) {
+      rowsToAdd.push([
+        date,
+        memberName,
+        alloc.type,
+        amt,
+        updatedBy,
+        now
+      ]);
+    }
+  });
+
+  if (rowsToAdd.length > 0) {
+    txSheet.getRange(txSheet.getLastRow() + 1, 1, rowsToAdd.length, 6).setValues(rowsToAdd);
   }
-  rowsToAdd.push([dateStr, memberName, "SahayaNidhi", sahayaPart, updatedBy, now]);
 
-  txSheet.getRange(txSheet.getLastRow() + 1, 1, rowsToAdd.length, 6).setValues(rowsToAdd);
-
-  // Also record in SahayaNidhiDB
-  const sahSheet = ss.getSheetByName(SHEET_SAHAYA);
-  sahSheet.appendRow([dateStr, "Monthly Deduction", memberName, sahayaPart, "Monthly Fund Deduction", updatedBy, "Automatic split from monthly payment"]);
+  // If a loan repayment was allocated, update LoansDB
+  const loanAlloc = allocations.find(a => a.type === "Loan Repayment");
+  if (loanAlloc && loanAlloc.amount > 0 && data.loanId) {
+    updateLoanRepaymentInDB(ss, data.loanId, Number(loanAlloc.amount));
+  } else if (loanAlloc && loanAlloc.amount > 0) {
+    // If no specific loanId provided, apply to oldest active loan of the member
+    applyLoanRepaymentToActive(ss, memberName, Number(loanAlloc.amount));
+  }
 
   return {
     status: "success",
-    savingsAmount: savingsPart,
-    sahayaAmount: sahayaPart
+    recordedRows: rowsToAdd.length,
+    allocations: allocations
   };
 }
 
 /**
- * Trigger monthly 5 AED deduction for all members for a specified month
+ * Update LoansDB repayment record
  */
-function triggerMonthlySahayaDeductions(ss, data) {
-  const monthName = data.monthName; // e.g., "Jan-2027"
-  const dateStr = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
-  const updatedBy = data.updatedBy || "Admin";
+function updateLoanRepaymentInDB(ss, loanId, repayAmount) {
+  const loanSheet = ss.getSheetByName(SHEET_LOANS);
+  if (!loanSheet) return;
 
-  const memSheet = ss.getSheetByName(SHEET_MEMBERS);
-  const members = getSheetData(memSheet);
+  const values = loanSheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === String(loanId)) {
+      const principal = Number(values[i][5] || 0); // Principal is col 6 (index 5)
+      const currentRepaid = Number(values[i][6] || 0); // Repaid_Amount is col 7 (index 6)
+      const newRepaid = currentRepaid + repayAmount;
+      const status = newRepaid >= principal ? "Repaid" : "Active";
 
+      loanSheet.getRange(i + 1, 7).setValue(newRepaid); // Repaid_Amount
+      loanSheet.getRange(i + 1, 8).setValue(status); // Status
+      break;
+    }
+  }
+}
+
+/**
+ * Apply repayment to active loan for member
+ */
+function applyLoanRepaymentToActive(ss, memberName, repayAmount) {
+  const loanSheet = ss.getSheetByName(SHEET_LOANS);
+  if (!loanSheet) return;
+
+  const values = loanSheet.getDataRange().getValues();
+  let remaining = repayAmount;
+
+  for (let i = 1; i < values.length && remaining > 0; i++) {
+    if (String(values[i][1]) === String(memberName) && String(values[i][7]) !== "Repaid") {
+      const principal = Number(values[i][5] || 0);
+      const currentRepaid = Number(values[i][6] || 0);
+      const outstanding = principal - currentRepaid;
+
+      const applied = Math.min(remaining, outstanding);
+      const newRepaid = currentRepaid + applied;
+      const status = newRepaid >= principal ? "Repaid" : "Active";
+
+      loanSheet.getRange(i + 1, 7).setValue(newRepaid);
+      loanSheet.getRange(i + 1, 8).setValue(status);
+      remaining -= applied;
+    }
+  }
+}
+
+/**
+ * Add a single transaction
+ */
+function addTransaction(ss, data) {
   const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
-  const sahSheet = ss.getSheetByName(SHEET_SAHAYA);
+  const date = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
-  const txRows = [];
-  const sahRows = [];
+  txSheet.appendRow([
+    date,
+    data.memberName,
+    data.type,
+    Number(data.amount),
+    data.updatedBy || "Admin",
+    now
+  ]);
 
-  members.forEach(m => {
-    const name = m["Name"];
-    if (name) {
-      txRows.push([dateStr, name, "SahayaNidhi", 5, updatedBy, now]);
-      sahRows.push([dateStr, "Compulsory Monthly Deduction", name, 5, "Monthly Charity Contribution (" + monthName + ")", updatedBy, "Deduction for " + monthName]);
-    }
-  });
+  return { status: "success" };
+}
 
-  if (txRows.length > 0) {
-    txSheet.getRange(txSheet.getLastRow() + 1, 1, txRows.length, 6).setValues(txRows);
-    sahSheet.getRange(sahSheet.getLastRow() + 1, 1, sahRows.length, 7).setValues(sahRows);
-  }
+/**
+ * Edit an existing transaction in TransactionsDB
+ */
+function editTransaction(ss, data) {
+  const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
+  const rowIndex = Number(data.rowIndex);
+  if (!rowIndex || rowIndex <= 1) throw new Error("Invalid rowIndex for edit");
 
-  return { status: "success", membersCount: members.length };
+  const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+
+  if (data.date) txSheet.getRange(rowIndex, 1).setValue(data.date);
+  if (data.memberName) txSheet.getRange(rowIndex, 2).setValue(data.memberName);
+  if (data.type) txSheet.getRange(rowIndex, 3).setValue(data.type);
+  if (data.amount !== undefined) txSheet.getRange(rowIndex, 4).setValue(Number(data.amount));
+  txSheet.getRange(rowIndex, 5).setValue(data.updatedBy || "Admin");
+  txSheet.getRange(rowIndex, 6).setValue(now);
+
+  return { status: "success", message: "Transaction updated" };
+}
+
+/**
+ * Void/Delete an existing transaction
+ */
+function voidTransaction(ss, data) {
+  const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
+  const rowIndex = Number(data.rowIndex);
+  if (!rowIndex || rowIndex <= 1) throw new Error("Invalid rowIndex for delete");
+
+  txSheet.deleteRow(rowIndex);
+  return { status: "success", message: "Transaction voided" };
 }
 
 /**
@@ -320,7 +508,8 @@ function triggerMonthlySahayaDeductions(ss, data) {
  */
 function issueLoan(ss, data) {
   const loanId = "LN-" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd-HHmmss");
-  const dateStr = data.issueDate || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const issueDate = data.issueDate || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const requestDate = data.requestDate || issueDate;
   const updatedBy = data.updatedBy || "Admin";
   const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
@@ -328,24 +517,22 @@ function issueLoan(ss, data) {
   loanSheet.appendRow([
     loanId,
     data.memberName,
-    data.type, // "Emergency Loan" or "Vacation Loan"
-    Number(data.amount),
-    data.requestDate || dateStr,
-    dateStr,
-    data.dueDate,
+    data.loanType, // "Emergency Loan" or "Vacation Loan"
+    requestDate,
+    issueDate,
+    Number(data.principal),
+    0, // Repaid_Amount
     "Active",
-    0,
-    "",
-    data.notes || ""
+    typeof data.scheduleJson === "string" ? data.scheduleJson : JSON.stringify(data.scheduleJson || [])
   ]);
 
-  // Record in TransactionsDB as "Loan issued" (amount disbursed reduces fund cash)
+  // Record "Loan issued" in TransactionsDB
   const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
   txSheet.appendRow([
-    dateStr,
+    issueDate,
     data.memberName,
     "Loan issued",
-    Number(data.amount),
+    Number(data.principal),
     updatedBy,
     now
   ]);
@@ -358,57 +545,38 @@ function issueLoan(ss, data) {
  */
 function repayLoan(ss, data) {
   const loanId = data.loanId;
-  const repayAmount = Number(data.amount);
-  const dateStr = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const amount = Number(data.amount);
+  const date = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   const updatedBy = data.updatedBy || "Admin";
   const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
-  const loanSheet = ss.getSheetByName(SHEET_LOANS);
-  const values = loanSheet.getDataRange().getValues();
-  let found = false;
+  updateLoanRepaymentInDB(ss, loanId, amount);
 
-  for (let i = 1; i < values.length; i++) {
-    if (String(values[i][0]) === String(loanId)) {
-      found = true;
-      const currentPrincipal = Number(values[i][3]);
-      const prevRepaid = Number(values[i][8] || 0);
-      const newRepaid = prevRepaid + repayAmount;
-      const isFullyPaid = newRepaid >= currentPrincipal;
-
-      loanSheet.getRange(i + 1, 9).setValue(newRepaid); // Repaid_Amount
-      loanSheet.getRange(i + 1, 8).setValue(isFullyPaid ? "Repaid" : "Partially Repaid"); // Status
-      if (isFullyPaid) {
-        loanSheet.getRange(i + 1, 10).setValue(dateStr); // Repaid_Date
-      }
-      break;
-    }
-  }
-
-  // Record in TransactionsDB as "Loan Repayment"
+  // Record in TransactionsDB
   const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
   txSheet.appendRow([
-    dateStr,
+    date,
     data.memberName,
     "Loan Repayment",
-    repayAmount,
+    amount,
     updatedBy,
     now
   ]);
 
-  return { status: "success", loanId: loanId, fullyPaid: found };
+  return { status: "success", loanId: loanId };
 }
 
 /**
- * Record SahayaNidhi Expense / Charity Disbursement
+ * Record Sahaya Expense / Charity Disbursement
  */
 function recordSahayaExpense(ss, data) {
-  const dateStr = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const date = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
   const updatedBy = data.updatedBy || "Admin";
   const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
 
   const sahSheet = ss.getSheetByName(SHEET_SAHAYA);
   sahSheet.appendRow([
-    dateStr,
+    date,
     "Charity Disbursement",
     "-",
     Number(data.amount),
@@ -421,7 +589,7 @@ function recordSahayaExpense(ss, data) {
 }
 
 /**
- * Update Member Details
+ * Update or Add Member in Member_Details
  */
 function updateMember(ss, data) {
   const sheet = ss.getSheetByName(SHEET_MEMBERS);
@@ -431,6 +599,7 @@ function updateMember(ss, data) {
 
   for (let i = 1; i < values.length; i++) {
     if (String(values[i][0]) === String(srNum) || String(values[i][1]) === String(name)) {
+      if (data.name !== undefined) sheet.getRange(i + 1, 2).setValue(data.name);
       if (data.ob !== undefined) sheet.getRange(i + 1, 3).setValue(Number(data.ob));
       if (data.phone !== undefined) sheet.getRange(i + 1, 4).setValue(data.phone);
       if (data.email !== undefined) sheet.getRange(i + 1, 5).setValue(data.email);
@@ -439,7 +608,7 @@ function updateMember(ss, data) {
     }
   }
 
-  // If not found, append
+  // New member
   sheet.appendRow([
     data.srNum || values.length,
     data.name,
@@ -450,4 +619,40 @@ function updateMember(ss, data) {
   ]);
 
   return { status: "success", message: "Member created" };
+}
+
+/**
+ * Update Configuration in ConfigDB
+ */
+function updateConfig(ss, data) {
+  const sheet = ss.getSheetByName(SHEET_CONFIG);
+  if (!sheet) return { status: "error", message: "ConfigDB missing" };
+
+  const values = sheet.getDataRange().getValues();
+  const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+
+  Object.keys(data).forEach(key => {
+    let found = false;
+    for (let i = 1; i < values.length; i++) {
+      if (String(values[i][0]) === String(key)) {
+        sheet.getRange(i + 1, 2).setValue(String(data[key]));
+        sheet.getRange(i + 1, 4).setValue(now);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      sheet.appendRow([key, String(data[key]), "Fund Parameter", now]);
+    }
+  });
+
+  return { status: "success", message: "Config updated" };
+}
+
+/**
+ * Run monthly Sahaya deduction manually for all members
+ */
+function runMonthlySahayaDeductions(ss, data) {
+  ensureMonthlySahayaNidhiDeductions(ss);
+  return { status: "success", message: "Monthly deductions ensured" };
 }

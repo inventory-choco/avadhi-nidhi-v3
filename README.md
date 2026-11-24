@@ -1,108 +1,82 @@
 # Avadhi Nidhi V3 💰
 
-A modern, transparent fund management and community welfare portal for **Avadhi Nidhi**, hosted on GitHub Pages with real-time Google Sheets backend database synchronization.
-
-## 🌟 Key Features
-
-1. **Member Accounts & Opening Balances**:
-   - Manages all 14 members with their respective baseline `OB from Dec-2026`.
-   - Handles negative opening balances (e.g. from Nov-2026 dues adjustment) that automatically offset as monthly contributions arrive.
-   - Dual-tier access control: **Admin Access** (full edit & ledger entries) and **Member Access** (transparent view-only access).
-
-2. **Monthly Payments (105 AED Model)**:
-   - Every month, each member pays **105 AED**.
-   - **Automatic Split**:
-     - **100 AED** goes to the member's personal fund savings balance.
-     - **5 AED** goes directly to the **SahayaNidhi Charity Fund**.
-   - If a member pays a different amount (e.g., 100 AED), 5 AED is reserved for SahayaNidhi and 95 AED for savings.
-   - Month-by-month status matrix tracking payment progress across months (Dec-2026, Jan-2027, etc.).
-
-3. **SahayaNidhi (Charity Fund)**:
-   - Dedicated community charity pool funded by the compulsory 5 AED monthly deduction.
-   - **Compulsory Monthly Deduction Engine**: Even if a member misses a monthly payment, the 5 AED deduction is tracked and accrued.
-   - Charity disbursement logging with beneficiary/cause details and audit trail.
-
-4. **Loan Facility**:
-   - **Emergency Loan**:
-     - Urgent financial support issued quickly within days.
-     - Max amount: **2,500 AED**.
-     - **Repayment Duration**: 1 month excluding remaining days of the current month.
-       - *Example*: Issued on `21 Oct 2026` → Due on or before `30 Nov 2026` (last day of the next month).
-     - Limit: **1 Emergency Loan per calendar year per member**.
-   - **Vacation Loan**:
-     - Loan provided to members traveling on vacation.
-     - Max amount: **2,500 AED**.
-     - **Advance Notice**: Must request at least **25 days prior** to the date needed.
-     - Limit: **1 Vacation Loan per calendar year per member**.
-   - Built-in automatic due date calculation, quota validation warnings, and repayment tracking.
-
-5. **TransactionsDB**:
-   - Master ledger matching Google Sheets:
-     `Date | Member_Name | Type | Amount | Updated By UserName | Updated By Date`
-   - One-click CSV export and instant search/filtering.
-
-6. **GitHub Pages Ready (Zero Build Required)**:
-   - Pure client-side modern JavaScript modules, Tailwind CSS, and responsive UI.
-   - No sensitive passwords or secret keys stored on GitHub; all data operations route to your authorized Google Sheet.
+A flagship, transparent community fund and welfare platform for **Avadhi Nidhi**, hosted on GitHub Pages with real-time Google Sheets backend synchronization and Google Identity Services (GIS) Sign-In.
 
 ---
 
-## 🚀 Setup & Google Sheet Connection Guide
+## 🌟 Key Upgrades & Architecture
 
-The live database is maintained in your Google Spreadsheet:
-`https://docs.google.com/spreadsheets/d/1nM27j5h8wQNhElx0GkGSez44SFFt0WD8hemEfPV9te8/edit?gid=0#gid=0`
+### 1. Permanent & Secure Backend (Zero Manual Setup for Members)
+- The production Google Apps Script Web App URL is hardcoded in [`js/config.js`](js/config.js):
+  `https://script.google.com/macros/s/AKfycbzlT1vFxdv-xNYWh-AeFE869IY35odzGIz-kzwpk_tN51MDQgR1hIFdOahO0a7Zt_DXIw/exec`
+- No member ever has to configure URLs or settings. Every read and write operates live against your Google Spreadsheet (`1nM27j5h8wQNhElx0GkGSez44SFFt0WD8hemEfPV9te8`).
 
-### Step 1: Deploy Google Apps Script Web App
-1. Open your Google Sheet in a web browser.
-2. In the top menu, click **Extensions** → **Apps Script**.
-3. Delete any default code in `Code.gs`.
-4. Copy the entire contents of the file [`google-apps-script/Code.gs`](google-apps-script/Code.gs) in this repository and paste it into the editor.
-5. In Apps Script, click **Deploy** (top right) → **New deployment**.
-6. Click the gear icon ⚙️ next to "Select type" and choose **Web app**.
-7. Fill in:
-   - **Description**: `Avadhi Nidhi V3 API`
-   - **Execute as**: `Me (your Google email)`
-   - **Who has access**: `Anyone` *(Note: This allows your GitHub Pages web app to read and write without exposing private service account keys)*.
-8. Click **Deploy**, review and grant Google permissions.
-9. Copy the **Web App URL** (looks like: `https://script.google.com/macros/s/.../exec`).
+### 2. Google Identity Services (GIS) & Strict RBAC
+- Authenticates members using Google One-Tap / Google Sign-In button (`accounts.google.com/gsi/client`).
+- Matches the verified Gmail address case-insensitively against the `Email` column in the `Member_Details` sheet:
+  - **Unregistered Email:** Access blocked with a friendly "Access Restricted" screen and Sign Out option.
+  - **Member (`Type === "Member"`):** Complete read-only transparency across Dashboard, Monthly Payments, SahayaNidhi, Loans, TransactionsDB, and Reports. All admin editing tools and the **Admin** tab are strictly hidden.
+  - **Admin (`Type === "Admin"`):** Full access including the **Admin Control Center**. Automatically logs the Admin's name in `Updated By UserName` and timestamp in `Updated By Date`.
 
-### Step 2: Connect the Web App
-1. Open the Avadhi Nidhi V3 app (locally or on GitHub Pages).
-2. Click the ⚙️ (Settings) button in the top right.
-3. Paste the **Web App URL** into the field.
-4. Click **Test Connection** to verify live communication with your Google Sheet.
-5. Click **Save Web App URL**.
+#### How to configure your Google Client ID for GitHub Pages:
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) $\rightarrow$ **APIs & Services** $\rightarrow$ **Credentials**.
+2. Create an **OAuth 2.0 Client ID** of type **Web application**.
+3. Under **Authorized JavaScript origins**, add:
+   - `https://inventory-choco.github.io` (for production)
+   - `http://localhost:3000` or `http://localhost:5500` (for local development)
+4. Copy the Client ID and paste it into `googleClientId` in [`js/config.js`](js/config.js).
+*(Note: A one-click registered member login directory is built-in for instant testing!)*
 
 ---
 
-## 🌐 Deploy to GitHub Pages
-
-1. Commit and push the code to your repository:
-   ```bash
-   git add .
-   git commit -m "Build Avadhi Nidhi V3 app with Google Sheet sync"
-   git push origin main
-   ```
-2. Go to your GitHub repository on `github.com`.
-3. Click **Settings** → **Pages** (under "Code and automation").
-4. Under **Source**, choose:
-   - Branch: `main`
-   - Folder: `/ (root)`
-5. Click **Save**.
-6. In 1–2 minutes, your website will be live at:
-   `https://inventory-choco.github.io/avadhi-nidhi-v3/`
+### 3. Smart Priority Waterfall Payment Engine
+When a member makes a payment, the smart waterfall engine automatically splits the amount:
+1. **Priority 1 — SahayaNidhi (5 AED/month compulsory charity):**
+   - On the 1st of every month, 5 AED is automatically accrued/deducted for all members.
+   - Any unpaid SahayaNidhi deduction is cleared first when money arrives.
+   - If a member pays 100 AED in a month instead of 105 AED, 5 AED goes to SahayaNidhi and 95 AED goes to monthly savings.
+2. **Priority 2 — Monthly Payment (100 AED/month share + negative OB arrears):**
+   - Clears negative opening balances (e.g. Kasim Tirur `-315 AED`, Hashim `-25 AED`) and monthly share dues.
+3. **Priority 3 — Active Loan Repayment:**
+   - Remaining funds automatically apply toward pending/upcoming loan installments.
+4. **Surplus:**
+   - Any remaining balance after clearing all dues credits to the member's monthly savings balance.
 
 ---
 
-## 👥 Members List Reference
+### 4. Complete Loan Lifecycle
+- **Emergency Loan:**
+  - Max 2,500 AED • Limit: 1 per calendar year.
+  - Repayment Due Date: **Last day of the next calendar month** excluding remaining days of the issuance month (e.g. issued 21-Oct-2026 $\rightarrow$ due 30-Nov-2026).
+- **Vacation Loan:**
+  - Max 2,500 AED • Limit: 1 per calendar year.
+  - Minimum **25 days advance notice** before desired travel date (enforced with a real-time validator).
+  - **7-Month Schedule with 2-Month Grace Period:**
+    - Months 1 & 2: Grace period (`0 AED` expected, early payment allowed).
+    - Months 3 to 7: 5 equal monthly installments (`Principal / 5`, e.g. 500 AED/mo for 2,500 AED principal).
+    - Interactive 7-month visual milestone timeline rendered on active loan cards.
 
-| Sr. Num | Name | OB from Dec-2026 | Role | Note |
-|---|---|---|---|---|
-| 1 | Ashraf Kannur | 500 AED | Member | Standard opening balance |
-| 2 | Usman Ollassery | 0 AED | Member | Balanced |
-| 3 | Kasim Tirur | -315 AED | Member | Negative balance (dues from 2026) |
-| 4 | Naseef | 500 AED | Member | Standard opening balance |
-| 5 | Shuhaib Muhammed C. | 500 AED | Admin | `shuhaibonly@gmail.com` |
-| 6 | Hashim | -25 AED | Member | Dues from 2026 return |
-| 7 | Shahid (Muthu) | 500 AED | Member | Standard opening balance |
-| 8–14 | Members 8–14 | 500 AED | Member | Configurable in `Member_Details` |
+---
+
+### 5. Automatic HD PNG Payment Receipt Generator (WhatsApp-Ready)
+- Every time a payment is recorded (and via the "Receipt" button on any row in `TransactionsDB`), a **3x Retina HD PNG receipt** is generated and downloaded automatically.
+- **Exact Filename Format:**
+  `{Total Amount paid}_{username}_{ddmmyy hhmmss}.png`
+  *(Example: `500_Kasim Tirur_241126 154510.png`)*
+- Visual layout formatted specifically for sharing in the Avadhi Nidhi WhatsApp group.
+
+---
+
+### 6. Legacy-Compatible Matrix Views & Reports
+- **Monthly Payments Matrix:** Year tabs (`Payments 2026`, `Payments 2027`), sticky Member Name column, Opening Balance (`OB from Dec-2026`), current active month highlighted, row totals, and bold totals row.
+- **Full WhatsApp Report Suite:** One-click **📥 Download Full WhatsApp Report (All Members)**, **📋 Copy to WhatsApp**, and **💾 Download .txt**.
+
+---
+
+### 7. Google Apps Script Setup (`Code.gs`)
+1. Open your Google Spreadsheet:
+   `https://docs.google.com/spreadsheets/d/1nM27j5h8wQNhElx0GkGSez44SFFt0WD8hemEfPV9te8/edit`
+2. Go to **Extensions** $\rightarrow$ **Apps Script**.
+3. Replace `Code.gs` with the updated contents of [`google-apps-script/Code.gs`](google-apps-script/Code.gs).
+4. Run `setupMonthlyTrigger()` once inside Apps Script to create the automatic 1st-of-month 5 AED trigger (an idempotent check also runs automatically on every app sync).
+5. Deploy as **Web app** (*Execute as: Me*, *Who has access: Anyone*).

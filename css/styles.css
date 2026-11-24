@@ -1,0 +1,228 @@
+/* Avadhi Nidhi V3 - Daylight-First Fintech Ledger & Micro-Interactions */
+
+:root {
+  --bg-primary: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
+  --bg-card-subtle: #f1f5f9;
+  --border-color: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --brand-emerald: #059669;
+  --brand-emerald-light: #ecfdf5;
+  --brand-teal: #0d9488;
+  --brand-teal-light: #f0fdfa;
+  --brand-blue: #2563eb;
+  --brand-blue-light: #eff6ff;
+  --brand-amber: #d97706;
+  --brand-amber-light: #fffbeb;
+  --brand-rose: #e11d48;
+  --brand-rose-light: #fff1f2;
+  --sahaya-purple: #6366f1;
+  --sahaya-purple-light: #eef2ff;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+}
+
+.dark {
+  --bg-primary: #0b1220;
+  --bg-surface: #111a2e;
+  --bg-surface-elevated: #16223b;
+  --bg-card-subtle: #1e293b;
+  --border-color: #24324d;
+  --border-strong: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --brand-emerald: #10b981;
+  --brand-emerald-light: rgba(16, 185, 129, 0.12);
+  --brand-teal: #14b8a6;
+  --brand-teal-light: rgba(20, 184, 166, 0.12);
+  --brand-blue: #38bdf8;
+  --brand-blue-light: rgba(56, 189, 248, 0.12);
+  --brand-amber: #f59e0b;
+  --brand-amber-light: rgba(245, 158, 11, 0.12);
+  --brand-rose: #f43f5e;
+  --brand-rose-light: rgba(244, 63, 94, 0.12);
+  --sahaya-purple: #818cf8;
+  --sahaya-purple-light: rgba(129, 140, 248, 0.12);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --glass-bg: rgba(17, 26, 46, 0.85);
+}
+
+/* Base resets & typography */
+html, body {
+  min-height: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono, .tabular-nums {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fluid Layout & Container */
+.fluid-container {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .fluid-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .fluid-container {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+}
+
+/* Sticky Glassmorphic Header */
+.glass-header {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Surface Cards */
+.card-surface {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.card-surface:hover {
+  border-color: var(--border-strong);
+}
+
+.card-surface-elevated {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-md);
+}
+
+/* Sticky First Column on Financial Matrix Tables */
+.table-matrix-wrapper {
+  overflow-x: auto;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-matrix th.sticky-col,
+.table-matrix td.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: var(--bg-surface);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.dark .table-matrix th.sticky-col,
+.dark .table-matrix td.sticky-col {
+  background-color: var(--bg-surface);
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Highlight Current Active Month Column */
+.col-current-month {
+  background-color: var(--brand-emerald-light) !important;
+  border-left: 2px solid var(--brand-emerald) !important;
+  border-right: 2px solid var(--brand-emerald) !important;
+  font-weight: 700;
+}
+
+.dark .col-current-month {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+/* Touch-friendly controls */
+button, select, input {
+  touch-action: manipulation;
+}
+
+/* Spring transition on Modals */
+.modal-overlay {
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.modal-content-spring {
+  animation: modalSpring 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalSpring {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Number Count-Up Transition */
+.count-up {
+  display: inline-block;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Interactive waterfall allocation progress bars */
+.waterfall-progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  background: var(--bg-card-subtle);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Reduced Motion Safe */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
