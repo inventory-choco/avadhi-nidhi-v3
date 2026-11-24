@@ -1,52 +1,469 @@
 /**
  * Avadhi Nidhi V3 - Reports Suite & WhatsApp Generator
- * Matches legacy-tested reporting from index (1).html with modern optimizations
+ * Faithfully matches legacy 12-column matrix structure from index (1).html
+ * with modern 3x Retina rendering, live on-screen table preview, and WhatsApp sharing.
  */
 
 import { formatCurrency, formatDate } from './calculations.js';
 
 export class ReportsService {
   /**
-   * Generate Clean Formatted WhatsApp Text Report for All Members
+   * Helper to parse and normalize month keys (e.g. 'Dec-2026', '2026-12', 'Dec-26')
    */
-  static generateWhatsAppTextReport(members, memberSummaries, fundSummary, activeMonth = null) {
-    const now = new Date();
+  static parseMonthKey(key) {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthLabel = activeMonth || `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+    if (!key) {
+      const now = new Date();
+      return {
+        yearMonth: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+        label: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        shortKey: `${monthNames[now.getMonth()]}-${String(now.getFullYear()).slice(-2)}`
+      };
+    }
+
+    // Format YYYY-MM
+    if (/^\d{4}-\d{2}$/.test(key)) {
+      const [y, m] = key.split('-').map(Number);
+      return {
+        yearMonth: key,
+        label: `${monthNames[m - 1]} ${y}`,
+        year: y,
+        month: m,
+        shortKey: `${monthNames[m - 1]}-${String(y).slice(-2)}`
+      };
+    }
+
+    // Format MMM-YYYY or MMM-YY
+    const parts = key.split('-');
+    if (parts.length === 2) {
+      const mStr = parts[0];
+      const mIdx = monthNames.findIndex(mn => mn.toLowerCase() === mStr.toLowerCase());
+      let y = parseInt(parts[1], 10);
+      if (y < 100) y += 2000;
+      if (mIdx !== -1) {
+        return {
+          yearMonth: `${y}-${String(mIdx + 1).padStart(2, '0')}`,
+          label: `${monthNames[mIdx]} ${y}`,
+          year: y,
+          month: mIdx + 1,
+          shortKey: `${monthNames[mIdx]}-${String(y).slice(-2)}`
+        };
+      }
+    }
+
+    // Fallback Date
+    const d = new Date(key);
+    if (!isNaN(d.getTime())) {
+      return {
+        yearMonth: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        shortKey: `${monthNames[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`
+      };
+    }
+
+    return {
+      yearMonth: '2026-12',
+      label: 'Dec 2026',
+      year: 2026,
+      month: 12,
+      shortKey: 'Dec-26'
+    };
+  }
+
+  /**
+   * Build the complete 12-column master matrix rows for all members
+   * Matches index (1).html:
+   * 1. Member Name
+   * 2-4. Monthly Payment (Net): OB, Paid, Total
+   * 5-7. SahayaNidhi Fund: OB, Paid, Total
+   * 8-11. Loan Tracking: Amount, Issued, Repaid, Balance
+   * 12. Grand Balance
+   */
+  static buildMatrixRows(members, transactions = [], loans = [], config = {}, activeMonthKey = 'Dec-2026') {
+    const monthInfo = this.parseMonthKey(activeMonthKey);
+    const activeYM = monthInfo.yearMonth; // "YYYY-MM"
+    const today = new Date();
+
+    const sums = {
+      mOB: 0,
+      mPaid: 0,
+      mTotal: 0,
+      sOB: 0,
+      sPaid: 0,
+      sTotal: 0,
+      lAmt: 0,
+      lRepaid: 0,
+      lBal: 0,
+      gBal: 0
+    };
+
+    const rows = (members || []).map(m => {
+      const name = m.Name || m.name;
+      const initialOB = Number(m['OB from Dec-2026'] || m.ob || 0);
+
+      const memTx = (transactions || []).filter(t => (t.Member_Name || t.memberName) === name);
+
+      // --- 1. Monthly Payment Calculations (NET) ---
+      // Payments before the active month
+      let priorMonthly = 0;
+      // Payments during the active month
+      let currentMonthly = 0;
+
+      memTx.forEach(t => {
+        const type = t.Type || t.type;
+        const amt = Number(t.Amount || t.amount || 0);
+        const dateStr = String(t.Date || t.date || '');
+
+        if (type === 'Monthly Payment') {
+          if (dateStr.startsWith(activeYM)) {
+            currentMonthly += amt;
+          } else if (dateStr < activeYM) {
+            priorMonthly += amt;
+          } else {
+            // Future or unscheduled
+            currentMonthly += amt;
+          }
+        }
+      });
+
+      const actualNetMonthlyOB = initialOB + priorMonthly;
+      const monthlyNetPaidCurrent = currentMonthly;
+      const monthlyNetTotal = actualNetMonthlyOB + monthlyNetPaidCurrent;
+
+      // --- 2. SahayaNidhi Calculations ---
+      let priorSahaya = 0;
+      let currentSahaya = 0;
+
+      memTx.forEach(t => {
+        const type = t.Type || t.type;
+        const amt = Number(t.Amount || t.amount || 0);
+        const dateStr = String(t.Date || t.date || '');
+
+        if (type === 'SahayaNidhi') {
+          if (dateStr.startsWith(activeYM)) {
+            currentSahaya += amt;
+          } else if (dateStr < activeYM) {
+            priorSahaya += amt;
+          } else {
+            currentSahaya += amt;
+          }
+        }
+      });
+
+      // Default current month to 5 AED if no explicit transaction recorded yet
+      const SahayaNidhiOB = priorSahaya;
+      const SahayaNidhiCurrent = currentSahaya > 0 ? currentSahaya : 5;
+      const SahayaNidhiTotal = SahayaNidhiOB + SahayaNidhiCurrent;
+
+      // --- 3. Loan Calculations ---
+      const memLoans = (loans || []).filter(l => (l.Member_Name || l.memberName) === name);
+      let loanAmount = 0;
+      let loanRepaid = 0;
+      let loanIssued = '—';
+      let loanIssuedRaw = null;
+      let loanDueDate = null;
+
+      if (memLoans.length > 0) {
+        // Take the latest / active loan
+        const latestLoan = memLoans[memLoans.length - 1];
+        loanAmount = Number(latestLoan.Principal || latestLoan.principal || latestLoan.Amount || latestLoan.amount || 0);
+        loanRepaid = Number(latestLoan.Repaid_Amount || latestLoan.repaidAmount || 0);
+        loanIssuedRaw = latestLoan.Issue_Date || latestLoan.issueDate || null;
+        loanIssued = formatDate(loanIssuedRaw);
+        loanDueDate = latestLoan.dueDate || null;
+      }
+
+      const loanBalance = Math.max(0, loanAmount - loanRepaid);
+
+      // --- 4. Grand Balance ---
+      const grandBalance = monthlyNetTotal - loanBalance;
+
+      // --- 5. Overdue / 7-Month Rule Check ---
+      let isOverdue = false;
+      if (loanBalance > 0 && loanIssuedRaw) {
+        const issueDate = new Date(loanIssuedRaw);
+        if (!isNaN(issueDate.getTime())) {
+          const monthsDiff = (today.getFullYear() - issueDate.getFullYear()) * 12 + (today.getMonth() - issueDate.getMonth());
+          if (monthsDiff > 7) {
+            isOverdue = true;
+          }
+        }
+        if (loanDueDate && new Date(loanDueDate) < today) {
+          isOverdue = true;
+        }
+      }
+
+      // Update Column Totals
+      sums.mOB += actualNetMonthlyOB;
+      sums.mPaid += monthlyNetPaidCurrent;
+      sums.mTotal += monthlyNetTotal;
+      sums.sOB += SahayaNidhiOB;
+      sums.sPaid += SahayaNidhiCurrent;
+      sums.sTotal += SahayaNidhiTotal;
+      sums.lAmt += loanAmount;
+      sums.lRepaid += loanRepaid;
+      sums.lBal += loanBalance;
+      sums.gBal += grandBalance;
+
+      return {
+        srNum: m['Sr. Num'] || m.srNum,
+        name,
+        actualNetMonthlyOB,
+        monthlyNetPaidCurrent,
+        monthlyNetTotal,
+        SahayaNidhiOB,
+        SahayaNidhiCurrent,
+        SahayaNidhiTotal,
+        loanAmount,
+        loanIssued,
+        loanRepaid,
+        loanBalance,
+        grandBalance,
+        isOverdue
+      };
+    });
+
+    return {
+      rows,
+      sums,
+      monthInfo
+    };
+  }
+
+  /**
+   * Generate Clean Formatted WhatsApp Text Report for All Members
+   * Incorporates full 12-column financial dimensions
+   */
+  static generateWhatsAppTextReport(members, matrixData, fundSummary, activeMonthLabel = null) {
+    const monthLabel = activeMonthLabel || matrixData?.monthInfo?.label || 'Dec 2026';
+    const now = new Date();
 
     let text = `*AVADHI NIDHI — MONTHLY STATUS REPORT*\n`;
     text += `📅 *Period:* ${monthLabel}\n`;
     text += `⏰ *Generated:* ${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString()}\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    text += `*MEMBERS FINANCIAL STANDING:*\n\n`;
+    text += `*MEMBERS FINANCIAL STANDING (12-COL MASTER LEDGER):*\n\n`;
 
-    memberSummaries.forEach((m, idx) => {
-      const gBal = m.grandBalance;
-      const gBalSign = gBal >= 0 ? '+' : '';
-      text += `${idx + 1}. *${m.name}*\n`;
-      text += `   • Opening Balance (Dec-26): ${m.ob} AED\n`;
-      text += `   • Net Savings Balance: ${m.currentSavingsBalance} AED\n`;
-      text += `   • SahayaNidhi Contributed: ${m.totalSahayaContributed} AED\n`;
-      if (m.totalOutstandingLoan > 0) {
-        text += `   • ⚠️ Active Loan Debt: ${m.totalOutstandingLoan} AED\n`;
-      } else {
-        text += `   • Active Loan: Nil\n`;
-      }
-      text += `   • *Grand Balance:* *${gBalSign}${gBal} AED*\n\n`;
+    (matrixData.rows || []).forEach((r, idx) => {
+      const gBalSign = r.grandBalance >= 0 ? '+' : '';
+      const loanStatus = r.loanBalance > 0 
+        ? `Amount: ${r.loanAmount} AED | Repaid: ${r.loanRepaid} AED | *Bal: ${r.loanBalance} AED*` 
+        : `Nil`;
+
+      text += `${idx + 1}. *${r.name}* ${r.isOverdue ? '⚠️ (Loan > 7 Mos)' : ''}\n`;
+      text += `   • *Monthly:* OB: ${r.actualNetMonthlyOB} | Paid: ${r.monthlyNetPaidCurrent} | *Total: ${r.monthlyNetTotal} AED*\n`;
+      text += `   • *SahayaNidhi:* OB: ${r.SahayaNidhiOB} | Paid: ${r.SahayaNidhiCurrent} | *Total: ${r.SahayaNidhiTotal} AED*\n`;
+      text += `   • *Loan:* ${loanStatus}\n`;
+      text += `   • *Grand Balance:* *${gBalSign}${r.grandBalance} AED*\n\n`;
     });
 
     text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `*GLOBAL FUND TOTALS:*\n`;
-    text += `💰 *Available Liquid Cash:* ${formatCurrency(fundSummary.availableLiquidCash)}\n`;
-    text += `📈 *Total Member Savings:* ${formatCurrency(fundSummary.totalMemberSavingsLiability)}\n`;
-    text += `🤝 *SahayaNidhi Charity Pool:* ${formatCurrency(fundSummary.availableSahayaPool)}\n`;
-    text += `📑 *Active Loans Outstanding:* ${formatCurrency(fundSummary.activeLoansOutstanding)}\n`;
-    text += `👥 *Total Active Members:* ${fundSummary.totalMembers}\n`;
+    text += `*GROUP TOTALS:*\n`;
+    text += `• Monthly OB: ${matrixData.sums.mOB} AED | Paid: ${matrixData.sums.mPaid} AED | Total: *${matrixData.sums.mTotal} AED*\n`;
+    text += `• SahayaNidhi Pool: *${matrixData.sums.sTotal} AED* (OB: ${matrixData.sums.sOB} + Paid: ${matrixData.sums.sPaid})\n`;
+    text += `• Active Loans Debt: *${matrixData.sums.lBal} AED* (Borrowed: ${matrixData.sums.lAmt} - Repaid: ${matrixData.sums.lRepaid})\n`;
+    text += `• *Grand Balance Net:* *${matrixData.sums.gBal >= 0 ? '+' : ''}${matrixData.sums.gBal} AED*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    if (fundSummary) {
+      text += `*LIQUID TREASURY:*\n`;
+      text += `💰 *Available Liquid Cash:* ${formatCurrency(fundSummary.availableLiquidCash)}\n`;
+      text += `🤝 *Sahaya Charity Pool:* ${formatCurrency(fundSummary.availableSahayaPool)}\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    }
     text += `_Avadhi Nidhi V3 • Verified via Google Sheets_`;
 
     return text;
+  }
+
+  /**
+   * Generate Full Visual WhatsApp Report PNG
+   * Replicates the exact 12-column layout and styling from legacy index (1).html
+   */
+  static async generateVisualReportSnapshot(matrixData, fundSummary, activeMonthLabel = 'Dec-2026') {
+    const container = document.createElement('div');
+    container.id = 'fullReportCapture';
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '1250px';
+    container.style.backgroundColor = '#0b1220';
+    container.style.color = '#ffffff';
+    container.style.fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
+    container.style.padding = '40px';
+
+    const rows = matrixData.rows;
+    const sums = matrixData.sums;
+    const monthTitle = matrixData.monthInfo?.label || activeMonthLabel;
+
+    let rowsHtml = '';
+    rows.forEach(r => {
+      const nameColor = r.isOverdue ? '#ff5c5c' : '#ffffff';
+      const gBalColor = r.grandBalance >= 0 ? '#1db954' : '#ff5c5c';
+
+      rowsHtml += `
+        <tr style="border-bottom: 1px solid #334155; font-size:13px;">
+          <td style="padding:10px 12px; font-weight:bold; border:1px solid #334155; color:${nameColor}; white-space:nowrap;">${r.name}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.actualNetMonthlyOB}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155; color:${r.monthlyNetPaidCurrent >= 100 ? '#1db954' : '#ff5c5c'}; font-weight:600;">${r.monthlyNetPaidCurrent}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155; font-weight:bold; color:#6ea8fe;">${r.monthlyNetTotal}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.SahayaNidhiOB}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155; color:#818cf8; font-weight:600;">${r.SahayaNidhiCurrent}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155; font-weight:bold; color:#818cf8;">${r.SahayaNidhiTotal}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.loanAmount > 0 ? r.loanAmount : '—'}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155; font-size:11px; color:#cbd5e1;">${r.loanIssued}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.loanAmount > 0 ? r.loanRepaid : '—'}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.loanAmount > 0 ? r.loanBalance : '—'}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155; font-weight:800; color:${gBalColor}; background:rgba(255,255,255,0.02);">${r.grandBalance}</td>
+        </tr>
+      `;
+    });
+
+    container.innerHTML = `
+      <div style="padding:20px; color:white; font-family:'Inter', sans-serif; background-color:#0b1220; width:1210px;">
+        <div style="text-align:center; margin-bottom:28px;">
+          <h1 style="color:#6ea8fe; margin:0; font-size:36px; font-weight:800; letter-spacing:-0.5px;">Avadhi Nidhi</h1>
+          <p style="color:#94a3b8; font-size:18px; margin:6px 0 0 0;">Monthly Status Report: <strong style="color:#ffffff;">${monthTitle}</strong></p>
+        </div>
+
+        <table style="width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; background:#0f172a; border:1px solid #334155;">
+          <thead>
+            <tr>
+              <th rowspan="2" style="background:#1e293b; color:#6ea8fe; padding:12px 10px; border:1px solid #334155; width:180px; text-align:left;">Member Name</th>
+              <th colspan="3" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">Monthly Payment (Net)</th>
+              <th colspan="3" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">SahayaNidhi Fund</th>
+              <th colspan="4" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">Loan Tracking</th>
+              <th rowspan="2" style="background:#2d3748; color:#1db954; padding:12px 10px; border:1px solid #334155; width:110px; text-align:center;">Grand Balance</th>
+            </tr>
+            <tr>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#cbd5e1;">OB</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#cbd5e1;">Paid</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#6ea8fe;">Total</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#cbd5e1;">OB</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#cbd5e1;">Paid</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#818cf8;">Total</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#cbd5e1;">Amount</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#cbd5e1;">Issued</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#cbd5e1;">Repaid</th>
+              <th style="background:#0f172a; padding:8px; border:1px solid #334155; text-align:center; font-size:12px; color:#cbd5e1;">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="height:10px;"><td colspan="12" style="background:#0b1220; border:none;"></td></tr>
+            <tr style="background:#1e293b; font-weight:800; border-top:2px solid #6ea8fe; font-size:13px;">
+              <td style="padding:10px 12px; border:1px solid #334155; color:#6ea8fe;">GROUP TOTALS</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.mOB}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155; color:#1db954;">${sums.mPaid}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155; color:#6ea8fe;">${sums.mTotal}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.sOB}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.sPaid}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155; color:#818cf8;">${sums.sTotal}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.lAmt}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155; background:#0b1220;"></td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.lRepaid}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.lBal}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155; color:${sums.gBal >= 0 ? '#1db954' : '#ff5c5c'};">${sums.gBal}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#64748b;">
+          <div>Liquid Bank Cash: <strong style="color:#10b981;">${formatCurrency(fundSummary?.availableLiquidCash || 0)}</strong> | Sahaya Charity Pool: <strong style="color:#818cf8;">${formatCurrency(fundSummary?.availableSahayaPool || 0)}</strong></div>
+          <div>Generated on: ${new Date().toLocaleString()} | Avadhi Nidhi System</div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(container);
+
+    try {
+      if (typeof html2canvas === 'undefined') {
+        throw new Error('html2canvas library is not loaded');
+      }
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#0b1220'
+      });
+
+      document.body.removeChild(container);
+
+      const filename = `AvadhiNidhi_FinalReport_${monthTitle.replace(/\s+/g, '_')}.png`;
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+
+      return { success: true, filename };
+    } catch (e) {
+      if (container.parentNode) document.body.removeChild(container);
+      console.error('Visual Report Snapshot Error:', e);
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Export Full 12-Column Master CSV
+   */
+  static exportMasterCSV(matrixData, filenameLabel = 'Master_Report') {
+    const headers = [
+      "Sr. Num",
+      "Member Name",
+      "Monthly OB",
+      "Monthly Paid",
+      "Monthly Total (Net)",
+      "SahayaNidhi OB",
+      "SahayaNidhi Paid",
+      "SahayaNidhi Total",
+      "Loan Principal",
+      "Loan Issued Date",
+      "Loan Repaid",
+      "Loan Balance",
+      "Grand Balance"
+    ];
+
+    const rows = (matrixData.rows || []).map((r, idx) => [
+      idx + 1,
+      `"${r.name}"`,
+      r.actualNetMonthlyOB,
+      r.monthlyNetPaidCurrent,
+      r.monthlyNetTotal,
+      r.SahayaNidhiOB,
+      r.SahayaNidhiCurrent,
+      r.SahayaNidhiTotal,
+      r.loanAmount > 0 ? r.loanAmount : 0,
+      `"${r.loanIssued}"`,
+      r.loanRepaid > 0 ? r.loanRepaid : 0,
+      r.loanBalance > 0 ? r.loanBalance : 0,
+      r.grandBalance
+    ]);
+
+    // Append Group Totals Row
+    const sums = matrixData.sums;
+    const totalsRow = [
+      "",
+      `"GROUP TOTALS"`,
+      sums.mOB,
+      sums.mPaid,
+      sums.mTotal,
+      sums.sOB,
+      sums.sPaid,
+      sums.sTotal,
+      sums.lAmt,
+      `""`,
+      sums.lRepaid,
+      sums.lBal,
+      sums.gBal
+    ];
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(',')), totalsRow.join(',')].join('\n');
+    this.downloadTextFile(csvContent, `AvadhiNidhi_${filenameLabel}_${new Date().toISOString().split('T')[0]}.csv`);
   }
 
   /**
@@ -77,149 +494,5 @@ export class ReportsService {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }
-
-  /**
-   * Generate Full Visual WhatsApp Report PNG (Legacy index (1).html layout upgraded to 3x Retina)
-   */
-  static async generateVisualReportSnapshot(memberSummaries, fundSummary, activeMonthKey = 'Dec-2026') {
-    const container = document.createElement('div');
-    container.id = 'fullReportCapture';
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-    container.style.width = '1250px';
-    container.style.backgroundColor = '#0b1220';
-    container.style.color = '#ffffff';
-    container.style.fontFamily = "'Plus Jakarta Sans', Inter, sans-serif";
-    container.style.padding = '40px';
-
-    let sums = {
-      mOB: 0,
-      mPaid: 0,
-      mTotal: 0,
-      sOB: 0,
-      sPaid: 0,
-      sTotal: 0,
-      lAmt: 0,
-      lRepaid: 0,
-      lBal: 0,
-      gBal: 0
-    };
-
-    let rowsHtml = '';
-    memberSummaries.forEach(m => {
-      const gBal = m.grandBalance;
-      const gBalColor = gBal >= 0 ? '#10b981' : '#f43f5e';
-      const hasOverdueLoan = m.totalOutstandingLoan > 0 && m.activeLoans?.some(l => l.dueDate && new Date(l.dueDate) < new Date());
-      const nameColor = hasOverdueLoan ? '#f43f5e' : '#ffffff';
-
-      sums.mOB += m.ob;
-      sums.mPaid += m.totalSavingsContributed;
-      sums.mTotal += m.currentSavingsBalance;
-      sums.sTotal += m.totalSahayaContributed;
-      sums.lBal += m.totalOutstandingLoan;
-      sums.gBal += gBal;
-
-      rowsHtml += `
-        <tr style="border-bottom: 1px solid #1e293b; font-size:13px;">
-          <td style="padding:10px 14px; font-weight:700; border:1px solid #1e293b; color:${nameColor};">${m.name}</td>
-          <td style="text-align:center; padding:8px; border:1px solid #1e293b;">${m.ob}</td>
-          <td style="text-align:center; padding:8px; border:1px solid #1e293b; color:#10b981;">+${m.totalSavingsContributed}</td>
-          <td style="text-align:center; padding:8px; border:1px solid #1e293b; font-weight:800; color:#38bdf8;">${m.currentSavingsBalance}</td>
-          <td style="text-align:center; padding:8px; border:1px solid #1e293b; color:#818cf8; font-weight:700;">${m.totalSahayaContributed}</td>
-          <td style="text-align:center; padding:8px; border:1px solid #1e293b;">${m.totalOutstandingLoan > 0 ? m.totalOutstandingLoan : '—'}</td>
-          <td style="text-align:center; padding:8px; border:1px solid #1e293b; font-weight:800; color:${gBalColor}; background:rgba(255,255,255,0.02);">${gBal}</td>
-        </tr>
-      `;
-    });
-
-    container.innerHTML = `
-      <div style="text-align:center; margin-bottom:28px;">
-        <div style="display:inline-block; padding:4px 14px; border-radius:999px; background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; font-size:12px; font-weight:700; margin-bottom:8px;">
-          AVADHI NIDHI V3 OFFICIAL MASTER REPORT
-        </div>
-        <h1 style="color:#ffffff; margin:0; font-size:32px; font-weight:800;">Monthly Fund Standing: ${activeMonthKey}</h1>
-        <p style="color:#94a3b8; font-size:14px; margin:6px 0 0 0;">All 14 Members Financial & Loan Reconciliation</p>
-      </div>
-
-      <table style="width:100%; border-collapse:collapse; background:#0f172a; border-radius:12px; overflow:hidden;">
-        <thead>
-          <tr style="background:#1e293b; color:#38bdf8; font-size:12px; text-transform:uppercase;">
-            <th style="padding:12px; border:1px solid #334155; text-align:left;">Member Name</th>
-            <th style="padding:12px; border:1px solid #334155; text-align:center;">OB (Dec-26)</th>
-            <th style="padding:12px; border:1px solid #334155; text-align:center;">Savings Paid</th>
-            <th style="padding:12px; border:1px solid #334155; text-align:center;">Net Savings</th>
-            <th style="padding:12px; border:1px solid #334155; text-align:center;">Sahaya Fund</th>
-            <th style="padding:12px; border:1px solid #334155; text-align:center;">Loan Debt</th>
-            <th style="padding:12px; border:1px solid #334155; text-align:center; color:#10b981;">Grand Balance</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-          <tr style="background:#1e293b; font-weight:800; border-top:2px solid #38bdf8; font-size:14px;">
-            <td style="padding:12px 14px; border:1px solid #334155; color:#38bdf8;">GROUP TOTALS</td>
-            <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.mOB}</td>
-            <td style="text-align:center; padding:10px; border:1px solid #334155; color:#10b981;">+${sums.mPaid}</td>
-            <td style="text-align:center; padding:10px; border:1px solid #334155; color:#38bdf8;">${sums.mTotal}</td>
-            <td style="text-align:center; padding:10px; border:1px solid #334155; color:#818cf8;">${sums.sTotal}</td>
-            <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.lBal}</td>
-            <td style="text-align:center; padding:10px; border:1px solid #334155; color:${sums.gBal >= 0 ? '#10b981' : '#f43f5e'};">${sums.gBal}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px; font-size:12px; color:#64748b;">
-        <div>Liquid Available Cash: <strong style="color:#10b981;">${formatCurrency(fundSummary.availableLiquidCash)}</strong> | Sahaya Pool: <strong style="color:#818cf8;">${formatCurrency(fundSummary.availableSahayaPool)}</strong></div>
-        <div>Generated: ${new Date().toLocaleString()} • Avadhi Nidhi System</div>
-      </div>
-    `;
-
-    document.body.appendChild(container);
-
-    try {
-      if (typeof html2canvas === 'undefined') {
-        throw new Error('html2canvas not loaded');
-      }
-
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#0b1220'
-      });
-
-      document.body.removeChild(container);
-
-      const filename = `AvadhiNidhi_FinalReport_${activeMonthKey}.png`;
-      const link = document.createElement('a');
-      link.download = filename;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-
-      return { success: true, filename };
-    } catch (e) {
-      if (container.parentNode) document.body.removeChild(container);
-      console.error(e);
-      return { success: false, error: e.message };
-    }
-  }
-
-  /**
-   * Export Master CSV
-   */
-  static exportMasterCSV(memberSummaries) {
-    const headers = ["Sr. Num", "Member Name", "OB from Dec-2026", "Net Savings Balance", "Sahaya Contributed", "Active Loan Debt", "Grand Balance"];
-    const rows = memberSummaries.map((m, idx) => [
-      idx + 1,
-      `"${m.name}"`,
-      m.ob,
-      m.currentSavingsBalance,
-      m.totalSahayaContributed,
-      m.totalOutstandingLoan,
-      m.grandBalance
-    ]);
-
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    this.downloadTextFile(csv, `AvadhiNidhi_Master_Report_${new Date().toISOString().split('T')[0]}.csv`);
   }
 }

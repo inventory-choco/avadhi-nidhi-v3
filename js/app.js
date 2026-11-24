@@ -24,6 +24,7 @@ class AvadhiNidhiApp {
   constructor() {
     this.currentTab = 'dashboard';
     this.activePaymentsYear = 2026;
+    this.activeReportsMonth = 'Dec-2026';
     this.theme = localStorage.getItem(APP_CONFIG.storageKeys.theme) || 'light';
 
     this.state = {
@@ -245,7 +246,15 @@ class AvadhiNidhiApp {
       btnOpenIssueLoan.addEventListener('click', () => this.openIssueLoanModal());
     }
 
-    // Reports Suite Buttons
+    // Reports Suite Controls
+    const reportMonthSelect = document.getElementById('report-month-select');
+    if (reportMonthSelect) {
+      reportMonthSelect.addEventListener('change', (e) => {
+        this.activeReportsMonth = e.target.value;
+        this.renderReports();
+      });
+    }
+
     const btnFullWhatsApp = document.getElementById('btn-full-whatsapp-report');
     if (btnFullWhatsApp) {
       btnFullWhatsApp.addEventListener('click', () => this.handleFullWhatsAppReport());
@@ -909,7 +918,7 @@ class AvadhiNidhiApp {
   }
 
   /**
-   * 7. REPORTS VIEW
+   * 7. REPORTS VIEW (Full 12-Column Master Matrix Suite)
    */
   renderReports() {
     const summary = calculateFundSummary(
@@ -918,11 +927,77 @@ class AvadhiNidhiApp {
       this.state.loans,
       this.state.sahayaNidhi
     );
-    const memberSummaries = this.state.members.map(m =>
-      computeMemberDues(m, this.state.transactions, this.state.loans, this.state.config)
+
+    const reportMonthSelect = document.getElementById('report-month-select');
+    if (reportMonthSelect && this.activeReportsMonth) {
+      reportMonthSelect.value = this.activeReportsMonth;
+    }
+
+    const matrixData = ReportsService.buildMatrixRows(
+      this.state.members,
+      this.state.transactions,
+      this.state.loans,
+      this.state.config,
+      this.activeReportsMonth
     );
 
-    const reportText = ReportsService.generateWhatsAppTextReport(this.state.members, memberSummaries, summary);
+    // 1. Render Live 12-Column Table Body
+    const tbody = document.getElementById('reports-matrix-tbody');
+    if (tbody) {
+      tbody.innerHTML = matrixData.rows.map(r => {
+        const nameColor = r.isOverdue ? 'text-rose-400 font-bold' : 'text-white font-medium';
+        const gBalColor = r.grandBalance >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
+        const mPaidColor = r.monthlyNetPaidCurrent >= 100 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold';
+
+        return `
+          <tr class="hover:bg-slate-800/50 transition-colors">
+            <td class="p-2.5 border border-slate-800 sticky left-0 bg-slate-900/95 z-10 ${nameColor}">${r.name} ${r.isOverdue ? '<span class="text-[10px] text-rose-500 font-normal">⚠️</span>' : ''}</td>
+            <td class="p-2 border border-slate-800 text-center text-slate-300">${r.actualNetMonthlyOB}</td>
+            <td class="p-2 border border-slate-800 text-center ${mPaidColor}">${r.monthlyNetPaidCurrent}</td>
+            <td class="p-2 border border-slate-800 text-center text-blue-400 font-bold">${r.monthlyNetTotal}</td>
+            <td class="p-2 border border-slate-800 text-center text-slate-300">${r.SahayaNidhiOB}</td>
+            <td class="p-2 border border-slate-800 text-center text-indigo-400 font-medium">${r.SahayaNidhiCurrent}</td>
+            <td class="p-2 border border-slate-800 text-center text-indigo-400 font-bold">${r.SahayaNidhiTotal}</td>
+            <td class="p-2 border border-slate-800 text-center text-slate-300">${r.loanAmount > 0 ? r.loanAmount : '—'}</td>
+            <td class="p-2 border border-slate-800 text-center text-[11px] text-slate-400">${r.loanIssued}</td>
+            <td class="p-2 border border-slate-800 text-center text-slate-300">${r.loanAmount > 0 ? r.loanRepaid : '—'}</td>
+            <td class="p-2 border border-slate-800 text-center text-slate-300">${r.loanAmount > 0 ? r.loanBalance : '—'}</td>
+            <td class="p-2 border border-slate-800 text-center ${gBalColor} bg-slate-950/40">${r.grandBalance}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 2. Render Live 12-Column Table Footer (Group Totals)
+    const tfoot = document.getElementById('reports-matrix-tfoot');
+    if (tfoot) {
+      const sums = matrixData.sums;
+      const gBalColor = sums.gBal >= 0 ? 'text-emerald-400' : 'text-rose-400';
+      tfoot.innerHTML = `
+        <tr>
+          <td class="p-2.5 border border-slate-700 sticky left-0 bg-slate-800 z-10 text-blue-400">GROUP TOTALS</td>
+          <td class="p-2 border border-slate-700 text-center">${sums.mOB}</td>
+          <td class="p-2 border border-slate-700 text-center text-emerald-400">${sums.mPaid}</td>
+          <td class="p-2 border border-slate-700 text-center text-blue-400 font-bold">${sums.mTotal}</td>
+          <td class="p-2 border border-slate-700 text-center">${sums.sOB}</td>
+          <td class="p-2 border border-slate-700 text-center text-indigo-400">${sums.sPaid}</td>
+          <td class="p-2 border border-slate-700 text-center text-indigo-400 font-bold">${sums.sTotal}</td>
+          <td class="p-2 border border-slate-700 text-center">${sums.lAmt}</td>
+          <td class="p-2 border border-slate-700 text-center bg-slate-900"></td>
+          <td class="p-2 border border-slate-700 text-center">${sums.lRepaid}</td>
+          <td class="p-2 border border-slate-700 text-center">${sums.lBal}</td>
+          <td class="p-2 border border-slate-700 text-center font-extrabold ${gBalColor}">${sums.gBal}</td>
+        </tr>
+      `;
+    }
+
+    // 3. Render WhatsApp Text Preview
+    const reportText = ReportsService.generateWhatsAppTextReport(
+      this.state.members,
+      matrixData,
+      summary,
+      this.activeReportsMonth
+    );
     const previewArea = document.getElementById('whatsapp-report-preview');
     if (previewArea) {
       previewArea.value = reportText;
@@ -936,25 +1011,42 @@ class AvadhiNidhiApp {
       this.state.loans,
       this.state.sahayaNidhi
     );
-    const memberSummaries = this.state.members.map(m =>
-      computeMemberDues(m, this.state.transactions, this.state.loans, this.state.config)
+    const matrixData = ReportsService.buildMatrixRows(
+      this.state.members,
+      this.state.transactions,
+      this.state.loans,
+      this.state.config,
+      this.activeReportsMonth
     );
 
-    this.showToast("Generating Full Report Snapshot...", "info");
-    const res = await ReportsService.generateVisualReportSnapshot(memberSummaries, summary, `${this.activePaymentsYear}`);
+    const btn = document.getElementById('btn-full-whatsapp-report');
+    const btnText = document.getElementById('btn-report-image-text');
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.textContent = "Generating 12-Col PNG...";
+
+    this.showToast("Generating 12-Column Report Image...", "info");
+    const res = await ReportsService.generateVisualReportSnapshot(matrixData, summary, this.activeReportsMonth);
+    
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = "Download Full 12-Col Report (PNG)";
+
     if (res.success) {
-      this.showToast("Finalized Report Image Downloaded!", "success");
+      this.showToast("Finalized 12-Column Report Image Downloaded!", "success");
     } else {
-      this.showToast("Generation failed", "error");
+      this.showToast("Snapshot generation failed: " + (res.error || "Unknown"), "error");
     }
   }
 
   exportMasterReportCSV() {
-    const memberSummaries = this.state.members.map(m =>
-      computeMemberDues(m, this.state.transactions, this.state.loans, this.state.config)
+    const matrixData = ReportsService.buildMatrixRows(
+      this.state.members,
+      this.state.transactions,
+      this.state.loans,
+      this.state.config,
+      this.activeReportsMonth
     );
-    ReportsService.exportMasterCSV(memberSummaries);
-    this.showToast("Master Report CSV Downloaded!", "success");
+    ReportsService.exportMasterCSV(matrixData, `Master_12Col_${this.activeReportsMonth}`);
+    this.showToast("12-Column Master CSV Downloaded!", "success");
   }
 
   /**
