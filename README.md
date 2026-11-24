@@ -18,14 +18,13 @@ A flagship, transparent community fund and welfare platform for **Avadhi Nidhi**
   - **Member (`Type === "Member"`):** Complete read-only transparency across Dashboard, Monthly Payments, SahayaNidhi, Loans, TransactionsDB, and Reports. All admin editing tools and the **Admin** tab are strictly hidden.
   - **Admin (`Type === "Admin"`):** Full access including the **Admin Control Center**. Automatically logs the Admin's name in `Updated By UserName` and timestamp in `Updated By Date`.
 
-#### How to configure your Google Client ID for GitHub Pages:
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/) $\rightarrow$ **APIs & Services** $\rightarrow$ **Credentials**.
-2. Create an **OAuth 2.0 Client ID** of type **Web application**.
-3. Under **Authorized JavaScript origins**, add:
-   - `https://inventory-choco.github.io` (for production)
-   - `http://localhost:3000` or `http://localhost:5500` (for local development)
-4. Copy the Client ID and paste it into `googleClientId` in [`js/config.js`](js/config.js).
-*(Note: A one-click registered member login directory is built-in for instant testing!)*
+#### Google OAuth 2.0 Client ID:
+- Already configured with your Google OAuth Web Client ID:
+  `188969693421-8ebob1ei8ks5j4dnq2j92la9mo1kqgfi.apps.googleusercontent.com`
+- In [Google Cloud Console](https://console.cloud.google.com/) $\rightarrow$ **APIs & Services** $\rightarrow$ **Credentials**, ensure under **Authorized JavaScript origins**:
+  - `https://inventory-choco.github.io` (for GitHub Pages production)
+  - `http://localhost:3000` / `http://127.0.0.1:5500` (for local development)
+- When a user signs in, their Gmail address is strictly validated against `Member_Details`. Only users with registered Gmail addresses in `Member_Details` can access the portal. Unregistered users are blocked with an "Access Denied" message. There are no mock or bypass buttons.
 
 ---
 

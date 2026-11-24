@@ -1,8 +1,8 @@
 /**
  * Avadhi Nidhi V3 - Production Configuration
  * 
- * Central configuration module with hardcoded production Google Apps Script Web App URL.
- * Members never need to configure URLs manually.
+ * Central configuration module with hardcoded production Google Apps Script Web App URL
+ * and Google OAuth 2.0 Web Client ID (matching Staff Attendance App).
  */
 
 export const APP_CONFIG = {
@@ -13,9 +13,8 @@ export const APP_CONFIG = {
   // Permanent Production Google Apps Script Web App Endpoint
   gasApiUrl: "https://script.google.com/macros/s/AKfycbzlT1vFxdv-xNYWh-AeFE869IY35odzGIz-kzwpk_tN51MDQgR1hIFdOahO0a7Zt_DXIw/exec",
 
-  // Google Identity Services (GIS) Client ID for Google Login
-  // Replace with your Google Cloud Console Web Client ID (instructions in README.md)
-  googleClientId: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+  // Google OAuth 2.0 Client ID (Production Web Client ID from Staff Attendance App)
+  googleClientId: "188969693421-8ebob1ei8ks5j4dnq2j92la9mo1kqgfi.apps.googleusercontent.com",
 
   // Core Financial Defaults
   defaults: {

@@ -108,37 +108,22 @@ class AvadhiNidhiApp {
   }
 
   handleAuthStateChange(user, unregisteredAttempt = null) {
-    const authOverlay = document.getElementById('auth-modal-overlay');
-    const restrictedOverlay = document.getElementById('access-restricted-overlay');
+    const loginGate = document.getElementById('login-gate');
     const appShell = document.getElementById('app-main-shell');
     const adminNavTab = document.getElementById('tab-btn-admin');
     const userDisplay = document.getElementById('header-user-display');
     const userRoleBadge = document.getElementById('header-user-role-badge');
     const adminOnlyButtons = document.querySelectorAll('.admin-only-action');
 
-    if (unregisteredAttempt) {
-      // Unregistered email blocked!
-      if (authOverlay) authOverlay.classList.add('hidden');
-      if (restrictedOverlay) {
-        restrictedOverlay.classList.remove('hidden');
-        document.getElementById('restricted-email-display').textContent = unregisteredAttempt.email;
-      }
-      if (appShell) appShell.classList.add('hidden');
-      return;
-    }
-
     if (!user) {
-      // Not logged in -> Show Auth Screen
-      if (restrictedOverlay) restrictedOverlay.classList.add('hidden');
-      if (authOverlay) authOverlay.classList.remove('hidden');
+      // Not logged in -> Show Login Gate, Hide App Shell
+      if (loginGate) loginGate.classList.remove('hidden');
       if (appShell) appShell.classList.add('hidden');
-      this.populateQuickLoginMembers();
       return;
     }
 
-    // Authenticated!
-    if (authOverlay) authOverlay.classList.add('hidden');
-    if (restrictedOverlay) restrictedOverlay.classList.add('hidden');
+    // Authenticated! Hide Login Gate, Show App Shell
+    if (loginGate) loginGate.classList.add('hidden');
     if (appShell) appShell.classList.remove('hidden');
 
     if (userDisplay) userDisplay.textContent = user.name;
@@ -163,37 +148,6 @@ class AvadhiNidhiApp {
     }
 
     this.render();
-  }
-
-  populateQuickLoginMembers() {
-    const container = document.getElementById('quick-login-members-list');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const members = this.state.members.length > 0 ? this.state.members : [
-      { name: "Shuhaib Muhammed C.", email: "shuhaibonly@gmail.com", type: "Admin" },
-      { name: "Ashraf Kannur", email: "inventory.choco@gmail.com", type: "Member" },
-      { name: "Kasim Tirur", email: "kasimtirur@gmail.com", type: "Member" }
-    ];
-
-    members.forEach(m => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'w-full px-3 py-2 text-left rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-white dark:bg-slate-900 flex items-center justify-between transition-colors text-xs';
-      btn.innerHTML = `
-        <div>
-          <span class="font-bold text-slate-800 dark:text-slate-100">${m.Name || m.name}</span>
-          <span class="block text-[11px] text-slate-500">${m.Email || m.email || 'No email assigned'}</span>
-        </div>
-        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.Type === 'Admin' || m.type === 'Admin' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}">
-          ${m.Type || m.type || 'Member'}
-        </span>
-      `;
-      btn.addEventListener('click', () => {
-        authService.devLoginAs(m);
-      });
-      container.appendChild(btn);
-    });
   }
 
   async refreshData() {
@@ -255,11 +209,11 @@ class AvadhiNidhiApp {
       });
     }
 
-    // Sign Out from Restricted Screen
-    const restrictedSignOutBtn = document.getElementById('btn-restricted-sign-out');
-    if (restrictedSignOutBtn) {
-      restrictedSignOutBtn.addEventListener('click', () => {
-        authService.signOut();
+    // Retry Login Button on Error Box
+    const retryAuthBtn = document.getElementById('btn-auth-retry');
+    if (retryAuthBtn) {
+      retryAuthBtn.addEventListener('click', () => {
+        authService.retryLogin();
       });
     }
 
