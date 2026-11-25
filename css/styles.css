@@ -59,6 +59,7 @@
 /* Base resets & typography */
 html, body {
   min-height: 100%;
+  overflow-x: hidden;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.2s ease, color 0.2s ease;
@@ -67,6 +68,15 @@ html, body {
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .font-mono, .tabular-nums {
@@ -78,8 +88,8 @@ body {
 .fluid-container {
   width: 100%;
   max-width: 100%;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
 }
 
 @media (min-width: 768px) {
@@ -215,6 +225,27 @@ button, select, input {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* Mobile Phone Ergonomics (< 640px) */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents iOS Safari auto-zoom on focus */
+  }
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal-overlay > .card-surface-elevated {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+  .mobile-bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* Reduced Motion Safe */

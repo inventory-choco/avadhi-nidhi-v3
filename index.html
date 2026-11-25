@@ -108,48 +108,48 @@
 
     <!-- TOPBAR -->
     <header class="sticky top-0 z-40 glass-header">
-      <div class="fluid-container h-16 flex items-center justify-between">
+      <div class="fluid-container h-14 sm:h-16 flex items-center justify-between gap-2">
         
         <!-- Brand Logo & Title -->
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-500/20 text-white font-extrabold text-base">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-500/20 text-white font-extrabold text-xs sm:text-base">
             AN
           </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Avadhi Nidhi</h1>
-              <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">V3</span>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 sm:gap-2">
+              <h1 class="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white tracking-tight truncate">Avadhi Nidhi</h1>
+              <span class="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">V3</span>
             </div>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Fintech Fund Ledger & SahayaNidhi Welfare</p>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Fintech Fund Ledger & Sahaya Nidhi</p>
           </div>
         </div>
 
         <!-- Sync Pill & User Info -->
-        <div class="flex items-center gap-2 sm:gap-4">
+        <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
           
           <!-- Live Sync Status Pill -->
-          <div id="sync-status-pill" class="flex items-center px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-            <span class="w-2 h-2 rounded-full bg-slate-400 mr-2"></span>
-            <span class="text-xs text-slate-500">Connecting...</span>
+          <div id="sync-status-pill" class="flex items-center px-2 sm:px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <span class="w-2 h-2 rounded-full bg-slate-400 mr-1.5 sm:mr-2 shrink-0"></span>
+            <span class="text-[11px] sm:text-xs text-slate-500 whitespace-nowrap">Syncing...</span>
           </div>
 
           <!-- Refresh Live Data Button -->
-          <button id="btn-refresh-live" title="Sync live with Google Sheets" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+          <button id="btn-refresh-live" title="Sync live with Google Sheets" class="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
           </button>
 
           <!-- Daylight / Dark Mode Toggle -->
-          <button id="btn-theme-toggle" title="Toggle Light / Dark mode" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+          <button id="btn-theme-toggle" title="Toggle Light / Dark mode" class="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors text-sm">
             <span id="theme-toggle-icon">🌙</span>
           </button>
 
           <!-- User Badge & Sign Out -->
-          <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
+          <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl">
             <div class="text-right hidden md:block">
               <div id="header-user-display" class="text-xs font-bold text-slate-800 dark:text-slate-200">User</div>
               <div id="header-user-role-badge" class="px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 inline-block">Member</div>
             </div>
-            <button id="btn-sign-out" title="Sign Out" class="text-xs text-slate-500 hover:text-rose-500 font-bold ml-1">
+            <button id="btn-sign-out" title="Sign Out" class="text-[11px] sm:text-xs text-slate-500 hover:text-rose-500 font-bold whitespace-nowrap">
               Sign Out
             </button>
           </div>
@@ -158,83 +158,83 @@
       </div>
 
       <!-- FLUID TAB NAVIGATION BAR -->
-      <div class="fluid-container border-t border-slate-200/80 dark:border-slate-800/80 overflow-x-auto">
-        <nav class="flex space-x-1 py-2" aria-label="Tabs">
-          <button data-tab-target="dashboard" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-sm flex items-center gap-1.5 transition-all">
+      <div class="fluid-container border-t border-slate-200/80 dark:border-slate-800/80 overflow-x-auto no-scrollbar">
+        <nav class="flex space-x-1 py-2 whitespace-nowrap" aria-label="Tabs">
+          <button data-tab-target="dashboard" class="shrink-0 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-sm flex items-center gap-1.5 transition-all">
             <span>📊</span><span>Dashboard</span>
           </button>
-          <button data-tab-target="monthly" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
+          <button data-tab-target="monthly" class="shrink-0 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
             <span>💳</span><span>Monthly Payments</span>
           </button>
-          <button data-tab-target="sahayanidhi" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
-            <span>🤝</span><span>SahayaNidhi</span>
+          <button data-tab-target="sahayanidhi" class="shrink-0 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
+            <span>🤝</span><span>Sahaya Nidhi</span>
           </button>
-          <button data-tab-target="loans" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
-            <span>📑</span><span>Loans (Emergency & Vacation)</span>
+          <button data-tab-target="loans" class="shrink-0 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
+            <span>📑</span><span>Loans</span>
           </button>
-          <button data-tab-target="transactions" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
-            <span>📜</span><span>TransactionsDB</span>
+          <button data-tab-target="transactions" class="shrink-0 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
+            <span>📜</span><span>Transactions</span>
           </button>
-          <button data-tab-target="members" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
+          <button data-tab-target="members" class="shrink-0 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
             <span>👥</span><span>Members</span>
           </button>
-          <button data-tab-target="reports" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
-            <span>📥</span><span>Reports & WhatsApp</span>
+          <button data-tab-target="reports" class="shrink-0 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all">
+            <span>📥</span><span>Reports</span>
           </button>
           <!-- Admin Tab: Strictly visible to Admin only -->
-          <button id="tab-btn-admin" data-tab-target="admin" class="hidden px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-1.5 transition-all">
-            <span>🛡️</span><span>Admin Center</span>
+          <button id="tab-btn-admin" data-tab-target="admin" class="hidden shrink-0 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-1.5 transition-all">
+            <span>🛡️</span><span>Admin</span>
           </button>
         </nav>
       </div>
     </header>
 
     <!-- MAIN FLUID CONTENT CONTAINER -->
-    <main class="flex-1 fluid-container py-6 space-y-6">
+    <main class="flex-1 fluid-container py-4 sm:py-6 pb-24 sm:pb-6 space-y-5 sm:space-y-6">
 
       <!-- ==================== 1. DASHBOARD PANEL ==================== -->
-      <div id="panel-dashboard" class="tab-panel space-y-6">
+      <div id="panel-dashboard" class="tab-panel space-y-5 sm:space-y-6">
         
-        <!-- KPI METRIC CARDS -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- KPI METRIC CARDS (2x2 on mobile, 4-col on desktop) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <!-- Card 1: Available Liquid Cash -->
-          <div class="card-surface p-5 relative overflow-hidden">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Available Fund Cash</span>
-              <span class="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-lg">💰</span>
+          <div class="card-surface p-3.5 sm:p-5 relative overflow-hidden">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 leading-tight">Available Cash</span>
+              <span class="p-1.5 sm:p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm sm:text-lg shrink-0">💰</span>
             </div>
-            <div id="dash-kpi-cash" class="text-3xl font-black text-slate-900 dark:text-white mt-2 tabular-nums">0 AED</div>
-            <p class="text-[11px] text-slate-500 mt-1">Liquid fund balance in bank / cash</p>
+            <div id="dash-kpi-cash" class="text-xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1.5 sm:mt-2 tabular-nums">0 AED</div>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 mt-1 hidden sm:block">Liquid fund balance in bank / cash</p>
           </div>
 
           <!-- Card 2: Total Member Savings -->
-          <div class="card-surface p-5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Total Member Savings</span>
-              <span class="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-lg">📈</span>
+          <div class="card-surface p-3.5 sm:p-5">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 leading-tight">Member Savings</span>
+              <span class="p-1.5 sm:p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm sm:text-lg shrink-0">📈</span>
             </div>
-            <div id="dash-kpi-savings" class="text-3xl font-black text-slate-900 dark:text-white mt-2 tabular-nums">0 AED</div>
-            <p class="text-[11px] text-slate-500 mt-1">Sum of member opening + monthly savings</p>
+            <div id="dash-kpi-savings" class="text-xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1.5 sm:mt-2 tabular-nums">0 AED</div>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 mt-1 hidden sm:block">Sum of member opening + monthly savings</p>
           </div>
 
           <!-- Card 3: Sahaya Nidhi Pool -->
-          <div class="card-surface p-5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Sahaya Nidhi Pool</span>
-              <span class="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-lg">🤝</span>
+          <div class="card-surface p-3.5 sm:p-5">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 leading-tight">Sahaya Nidhi</span>
+              <span class="p-1.5 sm:p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm sm:text-lg shrink-0">🤝</span>
             </div>
-            <div id="dash-kpi-sahaya" class="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2 tabular-nums">0 AED</div>
-            <p class="text-[11px] text-slate-500 mt-1">5 AED auto-deducted 1st of every month</p>
+            <div id="dash-kpi-sahaya" class="text-xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-1.5 sm:mt-2 tabular-nums">0 AED</div>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 mt-1 hidden sm:block">5 AED auto-deducted 1st of every month</p>
           </div>
 
           <!-- Card 4: Active Loans Outstanding -->
-          <div class="card-surface p-5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Active Loans Out</span>
-              <span class="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 text-lg">📑</span>
+          <div class="card-surface p-3.5 sm:p-5">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 leading-tight">Active Loans</span>
+              <span class="p-1.5 sm:p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm sm:text-lg shrink-0">📑</span>
             </div>
-            <div id="dash-kpi-loans" class="text-3xl font-black text-amber-600 dark:text-amber-400 mt-2 tabular-nums">0 AED</div>
-            <p class="text-[11px] text-slate-500 mt-1">Total borrowed by members awaiting repayment</p>
+            <div id="dash-kpi-loans" class="text-xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 mt-1.5 sm:mt-2 tabular-nums">0 AED</div>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 mt-1 hidden sm:block">Total borrowed by members awaiting repayment</p>
           </div>
         </div>
 
@@ -705,7 +705,7 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500">
+    <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 pb-24 sm:pb-6 text-center text-xs text-slate-500">
       <div class="fluid-container flex flex-col sm:flex-row items-center justify-between gap-2">
         <div>Avadhi Nidhi V3 Community Fund Management System</div>
         <div class="flex items-center gap-3">
@@ -715,6 +715,27 @@
         </div>
       </div>
     </footer>
+
+    <!-- STICKY MOBILE BOTTOM NAVIGATION BAR (< 640px) -->
+    <nav class="sm:hidden fixed bottom-0 inset-x-0 z-40 glass-header border-t border-slate-200 dark:border-slate-800 mobile-bottom-nav" aria-label="Mobile Navigation">
+      <div class="grid grid-cols-5 h-14">
+        <button data-tab-target="dashboard" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+          <span class="text-base leading-none">📊</span><span>Home</span>
+        </button>
+        <button data-tab-target="monthly" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          <span class="text-base leading-none">💳</span><span>Monthly</span>
+        </button>
+        <button data-tab-target="loans" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          <span class="text-base leading-none">📑</span><span>Loans</span>
+        </button>
+        <button data-tab-target="reports" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          <span class="text-base leading-none">📥</span><span>Reports</span>
+        </button>
+        <button data-tab-target="members" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+          <span class="text-base leading-none">👥</span><span>Members</span>
+        </button>
+      </div>
+    </nav>
 
   </div>
 

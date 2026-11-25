@@ -96,18 +96,18 @@ class AvadhiNidhiApp {
 
       if (status === 'syncing') {
         badge.innerHTML = `
-          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse mr-2"></span>
-          <span class="text-xs text-amber-600 dark:text-amber-300 font-medium">${text}</span>
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse mr-1.5 sm:mr-2 shrink-0"></span>
+          <span class="text-[11px] sm:text-xs text-amber-600 dark:text-amber-300 font-medium whitespace-nowrap"><span class="sm:hidden">Syncing</span><span class="hidden sm:inline">${text}</span></span>
         `;
       } else if (status === 'synced') {
         badge.innerHTML = `
-          <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-          <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">${text}</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 sm:mr-2 shrink-0"></span>
+          <span class="text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap"><span class="sm:hidden">Synced</span><span class="hidden sm:inline">${text}</span></span>
         `;
       } else {
         badge.innerHTML = `
-          <span class="w-2 h-2 rounded-full bg-slate-400 mr-2"></span>
-          <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">${text}</span>
+          <span class="w-2 h-2 rounded-full bg-slate-400 mr-1.5 sm:mr-2 shrink-0"></span>
+          <span class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap"><span class="sm:hidden">Offline</span><span class="hidden sm:inline">${text}</span></span>
         `;
       }
     });
@@ -300,15 +300,25 @@ class AvadhiNidhiApp {
 
     this.currentTab = tabId;
 
-    // Update Tab Navigation Buttons
+    // Update Tab Navigation Buttons (desktop top tabs + mobile bottom bar)
     document.querySelectorAll('[data-tab-target]').forEach(btn => {
       const active = btn.getAttribute('data-tab-target') === tabId;
-      if (active) {
-        btn.classList.add('bg-emerald-600', 'text-white', 'shadow-sm');
-        btn.classList.remove('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
+      if (btn.classList.contains('mobile-nav-btn')) {
+        if (active) {
+          btn.classList.add('text-emerald-600', 'dark:text-emerald-400');
+          btn.classList.remove('text-slate-500', 'dark:text-slate-400');
+        } else {
+          btn.classList.remove('text-emerald-600', 'dark:text-emerald-400');
+          btn.classList.add('text-slate-500', 'dark:text-slate-400');
+        }
       } else {
-        btn.classList.remove('bg-emerald-600', 'text-white', 'shadow-sm');
-        btn.classList.add('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
+        if (active) {
+          btn.classList.add('bg-emerald-600', 'text-white', 'shadow-sm');
+          btn.classList.remove('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
+        } else {
+          btn.classList.remove('bg-emerald-600', 'text-white', 'shadow-sm');
+          btn.classList.add('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
+        }
       }
     });
 
@@ -316,6 +326,10 @@ class AvadhiNidhiApp {
     document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
     const targetPanel = document.getElementById(`panel-${tabId}`);
     if (targetPanel) targetPanel.classList.remove('hidden');
+
+    if (window.innerWidth < 640) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
     this.renderCurrentTab();
   }
