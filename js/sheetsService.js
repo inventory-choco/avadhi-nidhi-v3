@@ -22,71 +22,93 @@ class SheetsService {
   }
 
   /**
-   * Fetch all live data from Google Sheets with caching fallback
+   * Instant synchronous read from localStorage cache for 0ms startup
+   */
+  getCachedState() {
+    return {
+      isOnline: false,
+      members: this.getLocal(APP_CONFIG.storageKeys.cachedMembers, []),
+      transactions: this.getLocal(APP_CONFIG.storageKeys.cachedTransactions, []),
+      loans: this.getLocal(APP_CONFIG.storageKeys.cachedLoans, []),
+      config: this.getLocal(APP_CONFIG.storageKeys.cachedConfig, APP_CONFIG.defaults),
+      sahayaNidhi: this.getLocal(APP_CONFIG.storageKeys.cachedSahaya, []),
+      payments2026: this.getLocal(APP_CONFIG.storageKeys.cachedPayments2026, []),
+      loans2026: this.getLocal(APP_CONFIG.storageKeys.cachedLoans2026, [])
+    };
+  }
+
+  /**
+   * Fetch with AbortController timeout so mobile networks never hang
+   */
+  async fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Fetch all live data from Google Sheets with 1 automatic retry & caching fallback
    */
   async loadAll() {
     this.notifySyncStatus('syncing', 'Syncing with Google Sheets...');
 
-    try {
-      // Live fetch from hardcoded production Web App
-      const res = await fetch(this.apiUrl, {
-        method: 'GET',
-        cache: 'no-store'
-      });
+    let lastErr = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await this.fetchWithTimeout(this.apiUrl, {
+          method: 'GET',
+          cache: 'no-store'
+        }, 15000);
 
-      if (!res.ok) {
-        throw new Error(`HTTP error ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP error ${res.status}`);
+        }
+
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          this.isOnline = true;
+          this.lastSynced = new Date().toISOString();
+          localStorage.setItem(APP_CONFIG.storageKeys.lastSynced, this.lastSynced);
+
+          // Cache datasets
+          const d = json.data;
+          if (d.members) this.saveLocal(APP_CONFIG.storageKeys.cachedMembers, d.members);
+          if (d.transactions) this.saveLocal(APP_CONFIG.storageKeys.cachedTransactions, d.transactions);
+          if (d.loans) this.saveLocal(APP_CONFIG.storageKeys.cachedLoans, d.loans);
+          if (d.config) this.saveLocal(APP_CONFIG.storageKeys.cachedConfig, d.config);
+          if (d.sahayaNidhi) this.saveLocal(APP_CONFIG.storageKeys.cachedSahaya, d.sahayaNidhi);
+          if (d.payments2026) this.saveLocal(APP_CONFIG.storageKeys.cachedPayments2026, d.payments2026);
+          if (d.loans2026) this.saveLocal(APP_CONFIG.storageKeys.cachedLoans2026, d.loans2026);
+
+          this.notifySyncStatus('synced', 'Synced with Google Sheets • Just now');
+
+          return {
+            isOnline: true,
+            members: d.members || [],
+            transactions: d.transactions || [],
+            loans: d.loans || [],
+            config: d.config || APP_CONFIG.defaults,
+            sahayaNidhi: d.sahayaNidhi || [],
+            payments2026: d.payments2026 || [],
+            loans2026: d.loans2026 || []
+          };
+        } else {
+          throw new Error(json.message || "Invalid payload format");
+        }
+      } catch (err) {
+        lastErr = err;
+        if (attempt === 0) await new Promise(r => setTimeout(r, 600));
       }
-
-      const json = await res.json();
-      if (json.status === 'success' && json.data) {
-        this.isOnline = true;
-        this.lastSynced = new Date().toISOString();
-        localStorage.setItem(APP_CONFIG.storageKeys.lastSynced, this.lastSynced);
-
-        // Cache datasets
-        const d = json.data;
-        if (d.members) this.saveLocal(APP_CONFIG.storageKeys.cachedMembers, d.members);
-        if (d.transactions) this.saveLocal(APP_CONFIG.storageKeys.cachedTransactions, d.transactions);
-        if (d.loans) this.saveLocal(APP_CONFIG.storageKeys.cachedLoans, d.loans);
-        if (d.config) this.saveLocal(APP_CONFIG.storageKeys.cachedConfig, d.config);
-        if (d.sahayaNidhi) this.saveLocal(APP_CONFIG.storageKeys.cachedSahaya, d.sahayaNidhi);
-        if (d.payments2026) this.saveLocal(APP_CONFIG.storageKeys.cachedPayments2026, d.payments2026);
-        if (d.loans2026) this.saveLocal(APP_CONFIG.storageKeys.cachedLoans2026, d.loans2026);
-
-        this.notifySyncStatus('synced', 'Synced with Google Sheets • Just now');
-
-        return {
-          isOnline: true,
-          members: d.members || [],
-          transactions: d.transactions || [],
-          loans: d.loans || [],
-          config: d.config || APP_CONFIG.defaults,
-          sahayaNidhi: d.sahayaNidhi || [],
-          payments2026: d.payments2026 || [],
-          loans2026: d.loans2026 || []
-        };
-      } else {
-        throw new Error(json.message || "Invalid payload format");
-      }
-
-    } catch (err) {
-      console.warn("Live fetch error, falling back to cached state:", err);
-      this.isOnline = false;
-      this.notifySyncStatus('offline', 'Offline Cache Mode');
-
-      // Return cached data
-      return {
-        isOnline: false,
-        members: this.getLocal(APP_CONFIG.storageKeys.cachedMembers, []),
-        transactions: this.getLocal(APP_CONFIG.storageKeys.cachedTransactions, []),
-        loans: this.getLocal(APP_CONFIG.storageKeys.cachedLoans, []),
-        config: this.getLocal(APP_CONFIG.storageKeys.cachedConfig, APP_CONFIG.defaults),
-        sahayaNidhi: this.getLocal(APP_CONFIG.storageKeys.cachedSahaya, []),
-        payments2026: this.getLocal(APP_CONFIG.storageKeys.cachedPayments2026, []),
-        loans2026: this.getLocal(APP_CONFIG.storageKeys.cachedLoans2026, [])
-      };
     }
+
+    console.warn("Live fetch error, falling back to cached state:", lastErr);
+    this.isOnline = false;
+    this.notifySyncStatus('offline', 'Offline Cache Mode');
+    return this.getCachedState();
   }
 
   /**

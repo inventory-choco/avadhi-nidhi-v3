@@ -104,7 +104,7 @@
   <!-- ============================================================= -->
   <!-- AUTHENTICATED APP SHELL (shown ONLY when currentUser is set)   -->
   <!-- ============================================================= -->
-  <div id="app-main-shell" class="flex-1 flex flex-col hidden">
+  <div id="app-main-shell" class="flex-1 flex flex-col min-w-0 w-full hidden">
 
     <!-- TOPBAR -->
     <header class="sticky top-0 z-40 glass-header">
@@ -190,7 +190,7 @@
     </header>
 
     <!-- MAIN FLUID CONTENT CONTAINER -->
-    <main class="flex-1 fluid-container py-4 sm:py-6 pb-24 sm:pb-6 space-y-5 sm:space-y-6">
+    <main class="flex-1 min-w-0 w-full fluid-container py-4 sm:py-6 pb-24 sm:pb-6 space-y-5 sm:space-y-6">
 
       <!-- ==================== 1. DASHBOARD PANEL ==================== -->
       <div id="panel-dashboard" class="tab-panel space-y-5 sm:space-y-6">
@@ -274,14 +274,14 @@
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left">
-              <thead class="bg-slate-50 dark:bg-slate-900/60 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800">
+              <thead class="bg-slate-50 dark:bg-slate-900/95 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap">
                 <tr>
-                  <th class="px-4 py-3">Member Name</th>
-                  <th class="px-4 py-3">OB (Nov-26)</th>
-                  <th class="px-4 py-3">Net Savings</th>
-                  <th class="px-4 py-3">Sahaya Fund</th>
-                  <th class="px-4 py-3">Active Loan</th>
-                  <th class="px-4 py-3">Grand Balance</th>
+                  <th class="px-3 sm:px-4 py-3 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Member Name</th>
+                  <th class="px-3 sm:px-4 py-3">OB (Nov-26)</th>
+                  <th class="px-3 sm:px-4 py-3">Net Savings</th>
+                  <th class="px-3 sm:px-4 py-3">Sahaya Fund</th>
+                  <th class="px-3 sm:px-4 py-3">Active Loan</th>
+                  <th class="px-3 sm:px-4 py-3">Grand Balance</th>
                 </tr>
               </thead>
               <tbody id="dash-members-tbody" class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -577,8 +577,8 @@
               <table id="reports-matrix-table" class="w-full text-xs border-collapse text-left whitespace-nowrap min-w-[1000px]">
                 <thead>
                   <tr class="bg-slate-800/90 text-blue-400">
-                    <th rowspan="2" class="p-3 border border-slate-700 text-center font-bold w-12">SN</th>
-                    <th rowspan="2" class="p-3 border border-slate-700 sticky left-0 z-20 bg-slate-800 font-bold min-w-[160px]">Member Name</th>
+                    <th rowspan="2" class="p-2.5 border border-slate-700 sticky left-0 z-20 bg-slate-800 text-center font-bold w-[44px] min-w-[44px]">SN</th>
+                    <th rowspan="2" class="p-3 border border-slate-700 sticky left-[44px] z-20 bg-slate-800 font-bold min-w-[155px] shadow-[2px_0_6px_rgba(0,0,0,0.35)]">Member Name</th>
                     <th colspan="3" class="p-2 border border-slate-700 text-center font-bold text-blue-300">Monthly Payment (Net)</th>
                     <th colspan="3" class="p-2 border border-slate-700 text-center font-bold text-indigo-300">SahayaNidhi Fund</th>
                     <th colspan="4" class="p-2 border border-slate-700 text-center font-bold text-slate-300">Loan Tracking</th>

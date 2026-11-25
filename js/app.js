@@ -62,13 +62,37 @@ class AvadhiNidhiApp {
     this.setupEventListeners();
     this.setupSyncIndicator();
 
+    // Hydrate instantly from cache for 0ms startup
+    const cached = sheetsService.getCachedState();
+    if (cached.members && cached.members.length > 0) {
+      this.state.members = cached.members;
+      this.state.transactions = cached.transactions || [];
+      this.state.loans = cached.loans || [];
+      this.state.config = cached.config || APP_CONFIG.defaults;
+      this.state.sahayaNidhi = cached.sahayaNidhi || [];
+      if (cached.payments2026?.length) this.state.payments2026 = cached.payments2026;
+      if (cached.loans2026?.length) this.state.loans2026 = cached.loans2026;
+    }
+
     // Initialize Auth Service with state callback
     authService.init((user, unregisteredAttempt) => {
       this.handleAuthStateChange(user, unregisteredAttempt);
     });
 
-    // Load Initial Data from Google Sheets / Cache
+    // Background live sync from Google Sheets
     await this.refreshData();
+  }
+
+  isCurrentUser(name) {
+    const u = authService.getCurrentUser();
+    if (!u || !u.name || !name) return false;
+    return String(u.name).trim().toLowerCase() === String(name).trim().toLowerCase();
+  }
+
+  youBadge(name) {
+    return this.isCurrentUser(name)
+      ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 text-[9px] font-extrabold uppercase tracking-wider border border-emerald-500/30">You</span>`
+      : '';
   }
 
   applyTheme(theme) {
@@ -502,28 +526,29 @@ class AvadhiNidhiApp {
 
     memberSummaries.forEach(m => {
       const tr = document.createElement('tr');
-      tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 transition-colors text-sm';
+      const isMe = this.isCurrentUser(m.name);
+      tr.className = `${isMe ? 'bg-emerald-50/90 dark:bg-emerald-950/35 ring-1 ring-inset ring-emerald-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'} border-b border-slate-200 dark:border-slate-800 transition-colors text-xs sm:text-sm whitespace-nowrap`;
       const isNegOB = m.ob < 0;
       const isNegSavings = m.currentSavingsBalance < 0;
 
       tr.innerHTML = `
-        <td class="px-4 py-3 font-semibold text-slate-900 dark:text-white">${m.name}</td>
-        <td class="px-4 py-3 ${isNegOB ? 'text-rose-500 font-bold' : 'text-slate-600 dark:text-slate-300'} tabular-nums">
+        <td class="px-3 sm:px-4 py-2.5 sm:py-3 font-semibold sticky left-0 z-10 ${isMe ? 'bg-emerald-50 dark:bg-emerald-950/95 text-emerald-700 dark:text-emerald-300' : 'bg-white dark:bg-[#111a2e] text-slate-900 dark:text-white'} shadow-[2px_0_5px_rgba(0,0,0,0.05)]">${m.name}${this.youBadge(m.name)}</td>
+        <td class="px-3 sm:px-4 py-2.5 sm:py-3 ${isNegOB ? 'text-rose-500 font-bold' : 'text-slate-600 dark:text-slate-300'} tabular-nums">
           ${formatCurrency(m.ob)}
         </td>
-        <td class="px-4 py-3 ${isNegSavings ? 'text-rose-500 font-bold' : 'text-emerald-600 dark:text-emerald-400 font-bold'} tabular-nums">
+        <td class="px-3 sm:px-4 py-2.5 sm:py-3 ${isNegSavings ? 'text-rose-500 font-bold' : 'text-emerald-600 dark:text-emerald-400 font-bold'} tabular-nums">
           ${formatCurrency(m.currentSavingsBalance)}
         </td>
-        <td class="px-4 py-3 text-indigo-600 dark:text-indigo-400 font-medium tabular-nums">
+        <td class="px-3 sm:px-4 py-2.5 sm:py-3 text-indigo-600 dark:text-indigo-400 font-medium tabular-nums">
           ${formatCurrency(m.totalSahayaContributed)}
         </td>
-        <td class="px-4 py-3 tabular-nums">
+        <td class="px-3 sm:px-4 py-2.5 sm:py-3 tabular-nums">
           ${m.totalOutstandingLoan > 0
             ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400">${formatCurrency(m.totalOutstandingLoan)}</span>`
             : `<span class="text-xs text-slate-400">—</span>`
           }
         </td>
-        <td class="px-4 py-3 font-black ${m.grandBalance < 0 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'} tabular-nums">
+        <td class="px-3 sm:px-4 py-2.5 sm:py-3 font-black ${m.grandBalance < 0 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'} tabular-nums">
           ${formatCurrency(m.grandBalance)}
         </td>
       `;
@@ -564,9 +589,10 @@ class AvadhiNidhiApp {
           return `<td class="px-2 py-3 text-center tabular-nums"><span class="text-slate-300 dark:text-slate-700">—</span></td>`;
         }).join('');
 
+        const isMe = this.isCurrentUser(name);
         return `
-          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-xs">
-            <td class="px-3 py-3 font-bold sticky-col text-slate-900 dark:text-white whitespace-nowrap">${name}</td>
+          <tr class="${isMe ? 'bg-emerald-50/90 dark:bg-emerald-950/35' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'} border-b border-slate-200 dark:border-slate-800 text-xs">
+            <td class="px-3 py-3 font-bold sticky-col ${isMe ? '!bg-emerald-50 dark:!bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'} whitespace-nowrap">${name}${this.youBadge(name)}</td>
             <td class="px-3 py-3 text-center font-semibold text-slate-600 dark:text-slate-300 tabular-nums">${ob}</td>
             ${cellsHtml}
             <td class="px-3 py-3 text-center font-black ${totalPaid < 0 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'} tabular-nums">${totalPaid}</td>
@@ -620,9 +646,10 @@ class AvadhiNidhiApp {
 
     let tbodyHtml = '';
     matrix.rows.forEach(r => {
+      const isMe = this.isCurrentUser(r.name);
       tbodyHtml += `
-        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-xs">
-          <td class="px-3 py-3 font-bold sticky-col text-slate-900 dark:text-white whitespace-nowrap">${r.name}</td>
+        <tr class="${isMe ? 'bg-emerald-50/90 dark:bg-emerald-950/35' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'} border-b border-slate-200 dark:border-slate-800 text-xs">
+          <td class="px-3 py-3 font-bold sticky-col ${isMe ? '!bg-emerald-50 dark:!bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'} whitespace-nowrap">${r.name}${this.youBadge(r.name)}</td>
           <td class="px-3 py-3 text-center ${r.ob < 0 ? 'text-rose-500 font-bold' : 'text-slate-600 dark:text-slate-300'} tabular-nums">${r.ob}</td>
           ${matrix.months.map(m => {
             const val = r.monthValues[m.key] || 0;
@@ -1046,15 +1073,16 @@ class AvadhiNidhiApp {
         <span class="inline-block px-2 py-0.5 rounded-md text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${r}</span>
       `).join('');
 
+      const isMe = this.isCurrentUser(item.name);
       return `
-        <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
+        <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isMe ? 'bg-emerald-50/80 dark:bg-emerald-950/30 ring-1 ring-inset ring-emerald-500/30' : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/30'} transition-colors">
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-xl ${st.rankBg} flex items-center justify-center text-xs font-black shrink-0 shadow-sm">
               #${item.rank}
             </div>
             <div>
               <div class="flex flex-wrap items-center gap-2">
-                <span class="text-sm font-bold text-slate-900 dark:text-white">${item.name}</span>
+                <span class="text-sm font-bold ${isMe ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}">${item.name}${this.youBadge(item.name)}</span>
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${st.badge}">${item.tierLabel}</span>
               </div>
               <div class="flex flex-wrap gap-1.5 mt-1.5">${reasonChips}</div>
@@ -1097,9 +1125,11 @@ class AvadhiNidhiApp {
         return `<td class="px-2 py-2 text-center tabular-nums ${v > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-300 dark:text-slate-700'}">${v > 0 ? v : '—'}</td>`;
       }).join('');
 
+      const mName = r.Name || r.name;
+      const isMe = this.isCurrentUser(mName);
       return `
-        <tr class="border-b border-slate-100 dark:border-slate-800 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800/40">
-          <td class="px-3 py-2 font-bold text-slate-900 dark:text-white whitespace-nowrap sticky left-0 bg-white dark:bg-slate-900">${r.Name || r.name}</td>
+        <tr class="border-b border-slate-100 dark:border-slate-800 text-[11px] ${isMe ? 'bg-emerald-50/90 dark:bg-emerald-950/35' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}">
+          <td class="px-3 py-2 font-bold whitespace-nowrap sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.06)] ${isMe ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-white dark:bg-[#111a2e] text-slate-900 dark:text-white'}">${mName}${this.youBadge(mName)}</td>
           <td class="px-2 py-2 text-center text-slate-500 whitespace-nowrap">${iss || '—'}</td>
           <td class="px-2 py-2 text-center font-bold tabular-nums ${amt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}">${amt > 0 ? amt : '—'}</td>
           ${repayCells}
@@ -1262,7 +1292,8 @@ class AvadhiNidhiApp {
 
     memberSummaries.forEach(m => {
       const card = document.createElement('div');
-      card.className = 'p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between';
+      const isMe = this.isCurrentUser(m.name);
+      card.className = `p-5 rounded-2xl ${isMe ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-500/50 ring-1 ring-emerald-500/30' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'} border shadow-sm flex flex-col justify-between`;
 
       card.innerHTML = `
         <div>
@@ -1275,7 +1306,7 @@ class AvadhiNidhiApp {
             </span>
           </div>
 
-          <h4 class="text-base font-bold text-slate-900 dark:text-white mt-3">${m.name}</h4>
+          <h4 class="text-base font-bold ${isMe ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'} mt-3">${m.name}${this.youBadge(m.name)}</h4>
           ${m.email ? `<p class="text-xs text-slate-500 mt-0.5">✉️ ${m.email}</p>` : ''}
           ${m.phone ? `<p class="text-xs text-slate-500">📞 ${m.phone}</p>` : ''}
 
@@ -1334,18 +1365,20 @@ class AvadhiNidhiApp {
       this.activeReportsMonth
     );
 
-    // 1. Render Live 13-Column Table Body (with SN)
+    // 1. Render Live 13-Column Table Body (with SN + Frozen Name + Current User Highlight)
     const tbody = document.getElementById('reports-matrix-tbody');
     if (tbody) {
       tbody.innerHTML = matrixData.rows.map((r, idx) => {
-        const nameColor = r.isOverdue ? 'text-rose-400 font-bold' : 'text-white font-medium';
+        const isMe = this.isCurrentUser(r.name);
+        const nameColor = isMe ? 'text-emerald-300 font-extrabold' : r.isOverdue ? 'text-rose-400 font-bold' : 'text-white font-medium';
         const gBalColor = r.grandBalance >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
         const mPaidColor = r.monthlyNetPaidCurrent >= 100 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold';
+        const stickyBg = isMe ? 'bg-emerald-950' : 'bg-slate-900';
 
         return `
-          <tr class="hover:bg-slate-800/50 transition-colors">
-            <td class="p-2 border border-slate-800 text-center text-slate-400 font-semibold">${r.srNum || idx + 1}</td>
-            <td class="p-2.5 border border-slate-800 sticky left-0 bg-slate-900/95 z-10 ${nameColor}">${r.name} ${r.isOverdue ? '<span class="text-[10px] text-rose-500 font-normal">⚠️</span>' : ''}</td>
+          <tr class="${isMe ? 'bg-emerald-950/60 ring-1 ring-inset ring-emerald-500/40' : 'hover:bg-slate-800/50'} transition-colors">
+            <td class="p-2 border border-slate-800 sticky left-0 z-10 ${stickyBg} text-center text-slate-400 font-semibold w-[44px] min-w-[44px]">${r.srNum || idx + 1}</td>
+            <td class="p-2.5 border border-slate-800 sticky left-[44px] z-10 ${stickyBg} shadow-[2px_0_6px_rgba(0,0,0,0.35)] ${nameColor}">${r.name}${this.youBadge(r.name)} ${r.isOverdue ? '<span class="text-[10px] text-rose-500 font-normal">⚠️</span>' : ''}</td>
             <td class="p-2 border border-slate-800 text-center text-slate-300">${r.actualNetMonthlyOB}</td>
             <td class="p-2 border border-slate-800 text-center ${mPaidColor}">${r.monthlyNetPaidCurrent}</td>
             <td class="p-2 border border-slate-800 text-center text-blue-400 font-bold">${r.monthlyNetTotal}</td>
@@ -1369,8 +1402,8 @@ class AvadhiNidhiApp {
       const gBalColor = sums.gBal >= 0 ? 'text-emerald-400' : 'text-rose-400';
       tfoot.innerHTML = `
         <tr>
-          <td class="p-2 border border-slate-700"></td>
-          <td class="p-2.5 border border-slate-700 sticky left-0 bg-slate-800 z-10 text-blue-400">GROUP TOTALS</td>
+          <td class="p-2 border border-slate-700 sticky left-0 bg-slate-800 z-10 w-[44px] min-w-[44px]"></td>
+          <td class="p-2.5 border border-slate-700 sticky left-[44px] bg-slate-800 z-10 text-blue-400 shadow-[2px_0_6px_rgba(0,0,0,0.35)]">GROUP TOTALS</td>
           <td class="p-2 border border-slate-700 text-center">${sums.mOB}</td>
           <td class="p-2 border border-slate-700 text-center text-emerald-400">${sums.mPaid}</td>
           <td class="p-2 border border-slate-700 text-center text-blue-400 font-bold">${sums.mTotal}</td>
