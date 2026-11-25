@@ -127,6 +127,20 @@ class SheetsService {
   }
 
   /**
+   * Submit member loan request (Status = Requested)
+   */
+  async requestLoan(requestData) {
+    return await this.postAction('REQUEST_LOAN', requestData);
+  }
+
+  /**
+   * Update loan request status (Approved, Rejected, Active when Paid)
+   */
+  async updateLoanStatus(statusData) {
+    return await this.postAction('UPDATE_LOAN_STATUS', statusData);
+  }
+
+  /**
    * Repay loan
    */
   async repayLoan(repayData) {

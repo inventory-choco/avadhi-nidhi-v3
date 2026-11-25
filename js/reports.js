@@ -159,8 +159,11 @@ export class ReportsService {
       const SahayaNidhiCurrent = currentSahaya > 0 ? currentSahaya : 5;
       const SahayaNidhiTotal = SahayaNidhiOB + SahayaNidhiCurrent;
 
-      // --- 3. Loan Calculations ---
-      const memLoans = (loans || []).filter(l => (l.Member_Name || l.memberName) === name);
+      // --- 3. Loan Calculations (only disbursed Active / Repaid loans) ---
+      const memLoans = (loans || []).filter(l => {
+        const s = l.Status || l.status;
+        return (l.Member_Name || l.memberName) === name && s !== 'Requested' && s !== 'Approved' && s !== 'Rejected';
+      });
       let loanAmount = 0;
       let loanRepaid = 0;
       let loanIssued = '';

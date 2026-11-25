@@ -32,6 +32,9 @@
   <!-- Google Identity Services (GIS) for Google Login (Matching Staff Attendance App) -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
+  <!-- jsPDF for Loan Request PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+
   <!-- html2canvas for 3x Retina Receipts & WhatsApp Reports -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
@@ -250,6 +253,9 @@
             <button id="btn-open-issue-loan" class="admin-only-action px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all">
               <span>📑</span><span>Issue Loan</span>
             </button>
+            <button id="btn-open-request-loan-dash" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all">
+              <span>📝</span><span>Request a Loan</span>
+            </button>
             <button onclick="window.app.switchTab('reports')" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all">
               <span>📥</span><span>WhatsApp Reports</span>
             </button>
@@ -361,6 +367,17 @@
       <!-- ==================== 4. LOANS PANEL ==================== -->
       <div id="panel-loans" class="tab-panel hidden space-y-6">
         
+        <!-- Header & Request CTA -->
+        <div class="card-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">Loans & Member Requests</h3>
+            <p class="text-xs text-slate-500">Submit a loan request, track committee approval, and view active schedules</p>
+          </div>
+          <button id="btn-open-request-loan" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 flex items-center gap-1.5 transition-all self-start sm:self-center">
+            <span>📝</span><span>New Loan Request</span>
+          </button>
+        </div>
+
         <!-- Policies Banner -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="card-surface p-5 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
@@ -383,6 +400,19 @@
               <li>• <strong>Advance Notice:</strong> Minimum 25 days before travel need date</li>
               <li>• <strong>7-Month Schedule:</strong> 2-month grace period (0 AED expected) + 5 equal monthly installments</li>
             </ul>
+          </div>
+        </div>
+
+        <!-- Loan Requests & Approvals Pipeline -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span>📋</span><span>Loan Requests & Approvals</span>
+            </h3>
+            <span class="text-[11px] text-slate-500">Requested ➔ Approved ➔ Paid / Active</span>
+          </div>
+          <div id="loans-requests-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Rendered via JS -->
           </div>
         </div>
 
@@ -790,6 +820,141 @@
           <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-500/20">
             Approve & Issue Loan
           </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MEMBER LOAN REQUEST FORM -->
+  <div id="modal-request-loan" class="modal-overlay hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="card-surface-elevated max-w-2xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-6 modal-content-spring relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
+        <div>
+          <h3 class="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <span>📝</span><span>Avadhi Nidhi — Loan Request Form</span>
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">Submits directly to the Loan tab for Admin approval & payout</p>
+        </div>
+        <button data-close-modal class="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-xl px-2">&times;</button>
+      </div>
+
+      <form id="form-request-loan" class="mt-4 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Request Date</label>
+            <input id="req-loan-date" type="date" readonly class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Applicant Name *</label>
+            <select id="req-loan-member" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none">
+              <!-- Populated via JS -->
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Loan Type *</label>
+            <select id="req-loan-type" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none">
+              <option value="Vacation Loan">✈️ Vacation Loan (Min 25 days notice)</option>
+              <option value="Emergency Loan">⚡ Emergency Loan (1 mo + remainder)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Loan Required By Date *</label>
+            <input id="req-loan-required-date" type="date" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none">
+          </div>
+        </div>
+
+        <div id="req-loan-policy-alert" class="hidden"></div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Contact Number UAE (+971) *</label>
+            <div class="flex gap-1.5">
+              <span class="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center">+971</span>
+              <input id="req-loan-phone-uae" type="tel" maxlength="9" inputmode="numeric" required placeholder="5xxxxxxxx" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Contact Number India (+91) <span class="font-normal text-slate-400">(optional)</span></label>
+            <div class="flex gap-1.5">
+              <span class="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center">+91</span>
+              <input id="req-loan-phone-india" type="tel" maxlength="10" inputmode="numeric" placeholder="10 digit number" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none">
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Requesting Amount (100 – 2,500 AED) *</label>
+            <input id="req-loan-amount" type="number" min="100" max="2500" step="100" value="2500" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono outline-none">
+            <div class="flex flex-wrap gap-1 mt-1.5">
+              <button type="button" class="req-amt-chip px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 text-[11px] font-bold text-slate-600 dark:text-slate-300" data-amt="500">500</button>
+              <button type="button" class="req-amt-chip px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 text-[11px] font-bold text-slate-600 dark:text-slate-300" data-amt="1000">1000</button>
+              <button type="button" class="req-amt-chip px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 text-[11px] font-bold text-slate-600 dark:text-slate-300" data-amt="1500">1500</button>
+              <button type="button" class="req-amt-chip px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 text-[11px] font-bold text-slate-600 dark:text-slate-300" data-amt="2000">2000</button>
+              <button type="button" class="req-amt-chip px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/20 text-[11px] font-bold text-slate-600 dark:text-slate-300" data-amt="2500">2500</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Reason for Request *</label>
+            <select id="req-loan-reason" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none">
+              <option value="">-- Select Reason --</option>
+              <option value="Annual Leave">Annual Leave</option>
+              <option value="Emergency Leave">Emergency Leave</option>
+              <option value="Medical Emergency">Medical Emergency</option>
+              <option value="Family Emergency">Family Emergency</option>
+              <option value="Other">Other</option>
+            </select>
+            <input id="req-loan-other-reason" type="text" placeholder="Specify reason..." class="hidden mt-2 w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 mb-1">Repayment Months (1–5)</label>
+            <input id="req-loan-months" type="number" min="1" max="5" value="5" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono outline-none">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 mb-1">Repayment Start</label>
+            <input id="req-loan-repay-start" type="date" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 mb-1">Est. Monthly / End</label>
+            <div id="req-loan-emi-display" class="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 pt-1.5">500 AED / mo</div>
+            <input id="req-loan-repay-end" type="hidden">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Auto Request Summary</label>
+          <div id="req-loan-summary" class="p-3 rounded-xl bg-blue-50/60 dark:bg-slate-900 border border-blue-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line font-mono leading-relaxed">Fill in the details above to preview your loan request summary.</div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Applicant Digital Signature *</label>
+            <button type="button" id="btn-clear-req-signature" class="text-[11px] font-bold text-rose-500 hover:underline">Clear Signature</button>
+          </div>
+          <canvas id="req-signature-canvas" class="w-full h-32 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white cursor-crosshair touch-none"></canvas>
+        </div>
+
+        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-2">
+          <div class="flex gap-2">
+            <button type="button" id="btn-req-download-pdf" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold">
+              📄 PDF
+            </button>
+            <button type="button" id="btn-req-whatsapp-share" class="px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
+              💬 WhatsApp
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" data-close-modal class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold">Cancel</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20">
+              Submit Loan Request
+            </button>
+          </div>
         </div>
       </form>
     </div>

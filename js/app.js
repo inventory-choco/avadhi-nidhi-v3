@@ -252,6 +252,16 @@ class AvadhiNidhiApp {
       btnOpenIssueLoan.addEventListener('click', () => this.openIssueLoanModal());
     }
 
+    // Member & Admin: Open Loan Request Modal
+    const btnReqLoan = document.getElementById('btn-open-request-loan');
+    if (btnReqLoan) {
+      btnReqLoan.addEventListener('click', () => this.openRequestLoanModal());
+    }
+    const btnReqLoanDash = document.getElementById('btn-open-request-loan-dash');
+    if (btnReqLoanDash) {
+      btnReqLoanDash.addEventListener('click', () => this.openRequestLoanModal());
+    }
+
     // Reports Suite Controls
     const reportMonthSelect = document.getElementById('report-month-select');
     if (reportMonthSelect) {
@@ -695,6 +705,7 @@ class AvadhiNidhiApp {
    * 4. LOANS (EMERGENCY & VACATION) VIEW + SMART PRIORITY LIST
    */
   renderLoans() {
+    this.renderLoanRequests();
     this.renderLoanPriorityList();
     this.render2026LoanReference();
 
@@ -703,7 +714,10 @@ class AvadhiNidhiApp {
     activeContainer.innerHTML = '';
 
     const loans = this.state.loans || [];
-    const activeLoans = loans.filter(l => (l.Status || l.status) !== 'Repaid');
+    const activeLoans = loans.filter(l => {
+      const s = l.Status || l.status;
+      return s !== 'Repaid' && s !== 'Requested' && s !== 'Approved' && s !== 'Rejected';
+    });
 
     if (activeLoans.length === 0) {
       activeContainer.innerHTML = `
@@ -809,6 +823,152 @@ class AvadhiNidhiApp {
         this.openLoanRepayModal(lId, mem, out);
       });
     });
+  }
+
+  renderLoanRequests() {
+    const container = document.getElementById('loans-requests-cards');
+    if (!container) return;
+
+    const loans = this.state.loans || [];
+    const requests = loans.filter(l => {
+      const s = l.Status || l.status;
+      return s === 'Requested' || s === 'Approved';
+    });
+
+    if (requests.length === 0) {
+      container.innerHTML = `
+        <div class="col-span-full p-6 text-center bg-white dark:bg-slate-800/70 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <p class="text-xs text-slate-500">No pending loan requests. Members can click <strong>"New Loan Request"</strong> above to submit one.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const isAdmin = authService.isAdmin();
+
+    container.innerHTML = requests.map(l => {
+      const status = l.Status || l.status;
+      const loanId = l.Loan_ID || l.loanId;
+      const memberName = l.Member_Name || l.memberName;
+      const loanType = l.Loan_Type || l.loanType || l.Type || l.type;
+      const principal = Number(l.Principal || l.principal || l.Amount || l.amount || 0);
+      const reqDate = l.Request_Date || l.requestDate;
+      const reqByDate = l.Issue_Date || l.issueDate;
+
+      let meta = {};
+      try {
+        const raw = l.Schedule_JSON || l.scheduleJson;
+        meta = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      } catch (e) {
+        meta = {};
+      }
+      const requiredDate = meta.requiredDate || reqByDate || '';
+      const reason = meta.reason || '—';
+      const contactUAE = meta.contactUAE ? `+971 ${meta.contactUAE}` : '';
+
+      const isApproved = status === 'Approved';
+      const statusBadge = isApproved
+        ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">✅ Approved (Awaiting Payout)</span>`
+        : `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">⏳ Requested</span>`;
+
+      const adminControls = isAdmin ? `
+        <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex flex-wrap justify-end gap-2">
+          ${!isApproved ? `
+            <button class="btn-loan-status px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold" data-loan-id="${loanId}" data-status="Rejected">
+              ❌ Reject
+            </button>
+            <button class="btn-loan-status px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm" data-loan-id="${loanId}" data-status="Approved">
+              ✅ Approve Request
+            </button>
+          ` : `
+            <button class="btn-loan-status px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm" data-loan-id="${loanId}" data-status="Active">
+              💸 Mark Paid & Issue Loan
+            </button>
+          `}
+        </div>
+      ` : '';
+
+      return `
+        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800 border ${isApproved ? 'border-blue-300 dark:border-blue-800' : 'border-amber-300 dark:border-amber-800/70'} shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              ${statusBadge}
+              <span class="text-[11px] font-mono text-slate-400">${loanId}</span>
+            </div>
+
+            <div class="flex items-baseline justify-between mt-3">
+              <h4 class="text-base font-bold text-slate-900 dark:text-white">${memberName}</h4>
+              <span class="text-lg font-black text-indigo-600 dark:text-indigo-400 tabular-nums">${formatCurrency(principal)}</span>
+            </div>
+
+            <div class="mt-2 grid grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-900/70 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div><span class="text-slate-400 block text-[10px]">Type</span><strong class="text-slate-700 dark:text-slate-200">${loanType}</strong></div>
+              <div><span class="text-slate-400 block text-[10px]">Required By</span><strong class="text-amber-600 dark:text-amber-400">${formatDate(requiredDate)}</strong></div>
+              <div><span class="text-slate-400 block text-[10px]">Requested On</span><span class="text-slate-600 dark:text-slate-300">${formatDate(reqDate)}</span></div>
+              <div><span class="text-slate-400 block text-[10px]">Reason</span><span class="text-slate-600 dark:text-slate-300">${reason}</span></div>
+            </div>
+            ${contactUAE ? `<p class="text-[11px] text-slate-400 mt-2">📞 ${contactUAE}${meta.repaymentMonths ? ` • ${meta.repaymentMonths} mo(s) plan` : ''}</p>` : ''}
+          </div>
+          ${adminControls}
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.btn-loan-status').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const loanId = e.currentTarget.getAttribute('data-loan-id');
+        const newStatus = e.currentTarget.getAttribute('data-status');
+        this.handleLoanStatusUpdate(loanId, newStatus);
+      });
+    });
+  }
+
+  async handleLoanStatusUpdate(loanId, newStatus) {
+    if (!authService.isAdmin()) {
+      this.showToast("Admin access required", "error");
+      return;
+    }
+
+    const loan = (this.state.loans || []).find(l => (l.Loan_ID || l.loanId) === loanId);
+    if (!loan) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const principal = Number(loan.Principal || loan.principal || loan.Amount || loan.amount || 0);
+    const loanType = loan.Loan_Type || loan.loanType || loan.Type || loan.type;
+
+    let scheduleJson = null;
+    if (newStatus === 'Active') {
+      if (loanType === 'Vacation Loan') {
+        scheduleJson = generateVacationLoanSchedule(principal, todayStr);
+      } else {
+        scheduleJson = [{
+          dueDate: calculateEmergencyLoanDueDate(todayStr),
+          expectedAmount: principal,
+          milestoneLabel: 'Full Emergency Loan Repayment'
+        }];
+      }
+    }
+
+    const label = newStatus === 'Approved' ? 'Approving loan request...' : newStatus === 'Active' ? 'Marking paid & issuing loan...' : 'Updating request...';
+    this.showToast(label, "info");
+
+    const res = await sheetsService.updateLoanStatus({
+      loanId,
+      status: newStatus,
+      issueDate: todayStr,
+      scheduleJson,
+      updatedBy: authService.getCurrentUser().name
+    });
+
+    if (res.status === 'success') {
+      this.showToast(
+        newStatus === 'Approved' ? 'Loan Request Approved!' : newStatus === 'Active' ? 'Loan Marked Paid & Issued!' : 'Loan Request Updated',
+        'success'
+      );
+      await this.refreshData();
+    } else {
+      this.showToast(res.message || 'Failed to update loan status', 'error');
+    }
   }
 
   renderLoanPriorityList() {
@@ -1369,6 +1529,199 @@ class AvadhiNidhiApp {
     modal.classList.remove('hidden');
   }
 
+  openRequestLoanModal() {
+    const modal = document.getElementById('modal-request-loan');
+    if (!modal) return;
+
+    const user = authService.getCurrentUser();
+    const isAdmin = authService.isAdmin();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const dateInput = document.getElementById('req-loan-date');
+    const memberSelect = document.getElementById('req-loan-member');
+    const typeSelect = document.getElementById('req-loan-type');
+    const reqByInput = document.getElementById('req-loan-required-date');
+    const amountInput = document.getElementById('req-loan-amount');
+    const monthsInput = document.getElementById('req-loan-months');
+    const repayStartInput = document.getElementById('req-loan-repay-start');
+    const phoneUaeInput = document.getElementById('req-loan-phone-uae');
+
+    if (dateInput) dateInput.value = todayStr;
+
+    if (memberSelect) {
+      memberSelect.innerHTML = '';
+      this.state.members.forEach(m => {
+        const name = m.Name || m.name;
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (user && name.toLowerCase() === user.name.toLowerCase()) opt.selected = true;
+        memberSelect.appendChild(opt);
+      });
+      memberSelect.disabled = !isAdmin && Boolean(user?.name);
+    }
+
+    // Pre-fill UAE phone from member record if available
+    const selectedMember = this.state.members.find(m => (m.Name || m.name) === memberSelect?.value);
+    if (phoneUaeInput && selectedMember) {
+      const digits = String(selectedMember.Phone || selectedMember.phone || '').replace(/\D/g, '');
+      if (digits.length >= 9) phoneUaeInput.value = digits.slice(-9);
+    }
+
+    // Default Required By Date (+26 days for Vacation Loan)
+    if (reqByInput) {
+      const d = new Date();
+      d.setDate(d.getDate() + 26);
+      reqByInput.value = d.toISOString().split('T')[0];
+    }
+
+    if (typeSelect) typeSelect.value = 'Vacation Loan';
+    if (amountInput) amountInput.value = 2500;
+    if (monthsInput) monthsInput.value = 5;
+
+    // Initialize Signature Pad
+    this.initReqSignaturePad();
+    this.updateRequestLoanCalculations();
+
+    modal.classList.remove('hidden');
+  }
+
+  initReqSignaturePad() {
+    const canvas = document.getElementById('req-signature-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(300, Math.floor((rect.width || 500) * dpr));
+    canvas.height = Math.max(120, Math.floor((rect.height || 128) * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = '#0f172a';
+    this.reqHasSignature = false;
+
+    if (canvas.dataset.bound === '1') return;
+    canvas.dataset.bound = '1';
+
+    let drawing = false;
+    const getPos = (e) => {
+      const r = canvas.getBoundingClientRect();
+      const pt = e.touches && e.touches[0] ? e.touches[0] : e;
+      return { x: pt.clientX - r.left, y: pt.clientY - r.top };
+    };
+    const start = (e) => {
+      if (e.cancelable) e.preventDefault();
+      drawing = true;
+      const p = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+    };
+    const move = (e) => {
+      if (!drawing) return;
+      if (e.cancelable) e.preventDefault();
+      const p = getPos(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      this.reqHasSignature = true;
+    };
+    const stop = () => { drawing = false; };
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', stop);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', stop);
+
+    const clearBtn = document.getElementById('btn-clear-req-signature');
+    if (clearBtn) {
+      clearBtn.onclick = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.reqHasSignature = false;
+      };
+    }
+  }
+
+  updateRequestLoanCalculations() {
+    const reqDate = document.getElementById('req-loan-date')?.value || new Date().toISOString().split('T')[0];
+    const memberName = document.getElementById('req-loan-member')?.value || '';
+    const loanType = document.getElementById('req-loan-type')?.value || 'Vacation Loan';
+    const requiredDate = document.getElementById('req-loan-required-date')?.value || '';
+    const amount = Number(document.getElementById('req-loan-amount')?.value || 0);
+    const monthsInput = document.getElementById('req-loan-months');
+    const repayStartInput = document.getElementById('req-loan-repay-start');
+    const repayEndInput = document.getElementById('req-loan-repay-end');
+    const emiDisplay = document.getElementById('req-loan-emi-display');
+    const policyAlert = document.getElementById('req-loan-policy-alert');
+    const summaryEl = document.getElementById('req-loan-summary');
+
+    const reasonSel = document.getElementById('req-loan-reason')?.value || '';
+    const otherReason = document.getElementById('req-loan-other-reason')?.value?.trim() || '';
+    const reasonText = reasonSel === 'Other' ? (otherReason || 'Other') : (reasonSel || 'Not selected');
+
+    // Policy & Quota checks
+    const alerts = [];
+    const targetYear = requiredDate ? new Date(requiredDate).getFullYear() : new Date().getFullYear();
+    const quota = checkLoanQuota(this.state.loans, memberName, loanType, targetYear);
+    if (!quota.isEligible) {
+      alerts.push(`⚠️ ${memberName} already used their ${loanType} quota for ${targetYear}.`);
+    }
+
+    if (loanType === 'Vacation Loan' && requiredDate) {
+      const notice = validateVacationNotice(reqDate, requiredDate);
+      if (!notice.isValid) {
+        alerts.push(`⚠️ Vacation Loan requires at least ${notice.minRequired} days advance notice (currently ${notice.daysNotice} days).`);
+      }
+      if (monthsInput) {
+        monthsInput.disabled = false;
+        const m = Math.min(5, Math.max(1, Number(monthsInput.value || 5)));
+        monthsInput.value = m;
+        if (repayStartInput && !repayStartInput.dataset.manual) {
+          const d = new Date(requiredDate + 'T00:00:00');
+          d.setMonth(d.getMonth() + 2);
+          repayStartInput.value = d.toISOString().split('T')[0];
+        }
+        const endD = repayStartInput?.value ? new Date(repayStartInput.value + 'T00:00:00') : null;
+        if (endD && repayEndInput) {
+          endD.setMonth(endD.getMonth() + m);
+          repayEndInput.value = endD.toISOString().split('T')[0];
+        }
+        const emi = amount > 0 ? (amount / m).toFixed(2) : '0';
+        if (emiDisplay) emiDisplay.textContent = `${emi} AED / mo (${m} mos)`;
+      }
+    } else if (loanType === 'Emergency Loan') {
+      if (monthsInput) {
+        monthsInput.value = 1;
+        monthsInput.disabled = true;
+      }
+      const due = calculateEmergencyLoanDueDate(requiredDate || reqDate);
+      if (repayStartInput) repayStartInput.value = due;
+      if (repayEndInput) repayEndInput.value = due;
+      if (emiDisplay) emiDisplay.textContent = `Due ${formatDate(due)} (Full)`;
+    }
+
+    if (policyAlert) {
+      if (alerts.length > 0) {
+        policyAlert.className = 'p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-semibold space-y-1';
+        policyAlert.innerHTML = alerts.join('<br>');
+      } else {
+        policyAlert.className = 'hidden';
+        policyAlert.innerHTML = '';
+      }
+    }
+
+    if (summaryEl) {
+      summaryEl.textContent = [
+        `Avadhi Nidhi — Loan Request`,
+        `Applicant: ${memberName || '—'} | Type: ${loanType}`,
+        `Amount: ${formatCurrency(amount)} | Required By: ${formatDate(requiredDate)}`,
+        `Reason: ${reasonText}`,
+        `Repayment: ${emiDisplay ? emiDisplay.textContent : '—'}`
+      ].join('\n');
+    }
+  }
+
   openIssueLoanModal() {
     if (!authService.isAdmin()) {
       this.showToast("Admin access required", "error");
@@ -1447,6 +1800,7 @@ class AvadhiNidhiApp {
     modal.classList.remove('hidden');
   }
 
+
   openLoanRepayModal(loanId, memberName, outstanding) {
     const modal = document.getElementById('modal-repay-loan');
     if (!modal) return;
@@ -1461,6 +1815,7 @@ class AvadhiNidhiApp {
     modal.classList.remove('hidden');
   }
 
+
   openEditMemberModal(member = null) {
     const modal = document.getElementById('modal-edit-member');
     if (!modal) return;
@@ -1474,6 +1829,7 @@ class AvadhiNidhiApp {
 
     modal.classList.remove('hidden');
   }
+
 
   setupForms() {
     // 1. Smart Payment Form
@@ -1669,6 +2025,153 @@ class AvadhiNidhiApp {
         }
       });
     }
+
+    // 7. Member Loan Request Form
+    const reqForm = document.getElementById('form-request-loan');
+    if (reqForm) {
+      const recalcIds = ['req-loan-member', 'req-loan-type', 'req-loan-required-date', 'req-loan-amount', 'req-loan-months', 'req-loan-reason', 'req-loan-other-reason', 'req-loan-repay-start'];
+      recalcIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => this.updateRequestLoanCalculations());
+        el.addEventListener('change', () => {
+          if (id === 'req-loan-repay-start') el.dataset.manual = '1';
+          if (id === 'req-loan-required-date') {
+            const rs = document.getElementById('req-loan-repay-start');
+            if (rs) delete rs.dataset.manual;
+          }
+          if (id === 'req-loan-reason') {
+            const other = document.getElementById('req-loan-other-reason');
+            if (other) other.classList.toggle('hidden', el.value !== 'Other');
+          }
+          this.updateRequestLoanCalculations();
+        });
+      });
+
+      document.querySelectorAll('.req-amt-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => {
+          const amtEl = document.getElementById('req-loan-amount');
+          if (amtEl) {
+            amtEl.value = e.currentTarget.getAttribute('data-amt');
+            this.updateRequestLoanCalculations();
+          }
+        });
+      });
+
+      const pdfBtn = document.getElementById('btn-req-download-pdf');
+      if (pdfBtn) {
+        pdfBtn.addEventListener('click', () => this.exportLoanRequestPDF());
+      }
+
+      const waBtn = document.getElementById('btn-req-whatsapp-share');
+      if (waBtn) {
+        waBtn.addEventListener('click', () => {
+          const summaryText = document.getElementById('req-loan-summary')?.textContent || '';
+          window.open(`https://wa.me/?text=${encodeURIComponent(summaryText)}`, '_blank', 'noopener');
+        });
+      }
+
+      reqForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const memberName = document.getElementById('req-loan-member').value;
+        const loanType = document.getElementById('req-loan-type').value;
+        const requestDate = document.getElementById('req-loan-date').value;
+        const requiredDate = document.getElementById('req-loan-required-date').value;
+        const principal = Number(document.getElementById('req-loan-amount').value);
+        const phoneUAE = document.getElementById('req-loan-phone-uae').value.replace(/\D/g, '');
+        const phoneIndia = document.getElementById('req-loan-phone-india').value.replace(/\D/g, '');
+        const reasonSel = document.getElementById('req-loan-reason').value;
+        const otherReason = document.getElementById('req-loan-other-reason').value.trim();
+        const reason = reasonSel === 'Other' ? otherReason : reasonSel;
+        const repaymentMonths = Number(document.getElementById('req-loan-months').value || 1);
+        const repayStart = document.getElementById('req-loan-repay-start').value;
+        const repayEnd = document.getElementById('req-loan-repay-end').value;
+
+        if (!memberName || !requiredDate || !principal || principal < 100 || principal > 2500) {
+          this.showToast("Please check applicant, required date, and amount (100–2500 AED).", "error");
+          return;
+        }
+        if (!/^5\d{8}$/.test(phoneUAE)) {
+          this.showToast("Enter a valid 9-digit UAE mobile number starting with 5.", "error");
+          return;
+        }
+        if (!reason) {
+          this.showToast("Please select or specify a reason.", "error");
+          return;
+        }
+        if (!this.reqHasSignature) {
+          this.showToast("Please provide your digital signature.", "error");
+          return;
+        }
+
+        if (loanType === 'Vacation Loan') {
+          const notice = validateVacationNotice(requestDate, requiredDate);
+          if (!notice.isValid) {
+            this.showToast(`Vacation Loan requires ${notice.minRequired} days advance notice (currently ${notice.daysNotice} days).`, "error");
+            return;
+          }
+        }
+
+        document.getElementById('modal-request-loan').classList.add('hidden');
+        this.showToast(`Submitting loan request for ${memberName}...`, "info");
+
+        const res = await sheetsService.requestLoan({
+          memberName,
+          loanType,
+          requestDate,
+          requiredDate,
+          principal,
+          metaJson: {
+            requiredDate,
+            reason,
+            contactUAE: phoneUAE,
+            contactIndia: phoneIndia,
+            repaymentMonths,
+            repayStart,
+            repayEnd
+          }
+        });
+
+        if (res.status === 'success') {
+          this.showToast("Loan request submitted! Visible on Loans tab.", "success");
+          await this.refreshData();
+          this.switchTab('loans');
+        } else {
+          this.showToast(res.message || "Failed to submit loan request", "error");
+        }
+      });
+    }
+  }
+
+  exportLoanRequestPDF() {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      this.showToast("PDF library still loading, please try again.", "error");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const summaryText = document.getElementById('req-loan-summary')?.textContent || '';
+    const memberName = document.getElementById('req-loan-member')?.value || 'Member';
+    const canvas = document.getElementById('req-signature-canvas');
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 595, 70, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.text('AVADHI NIDHI — LOAN REQUEST FORM', 40, 42);
+
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(summaryText, 515);
+    doc.text(lines, 40, 110);
+
+    if (canvas && this.reqHasSignature) {
+      doc.text('Applicant Signature:', 40, 260);
+      doc.addImage(canvas.toDataURL('image/png'), 'PNG', 40, 275, 220, 70);
+    }
+
+    doc.save(`AvadhiNidhi_LoanRequest_${memberName.replace(/\s+/g, '_')}.pdf`);
+    this.showToast("Loan Request PDF downloaded!", "success");
   }
 
   async handleRunMonthlySahaya() {

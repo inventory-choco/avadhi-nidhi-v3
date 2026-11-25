@@ -130,7 +130,9 @@ export function checkLoanQuota(loans, memberName, loanType, targetYear) {
   const matching = (loans || []).filter(l => {
     const lName = l.Member_Name || l.memberName;
     const lType = l.Loan_Type || l.loanType || l.Type || l.type;
+    const status = l.Status || l.status;
     const issueDate = l.Issue_Date || l.issueDate || l.Date || l.date;
+    if (status === 'Rejected' || status === 'Requested' || status === 'Approved') return false;
     if (lName !== memberName || lType !== loanType || !issueDate) return false;
     return new Date(issueDate).getFullYear() === yr;
   });
@@ -194,9 +196,11 @@ export function computeMemberDues(member, transactions, loans, config = APP_CONF
   let activeLoans = [];
 
   memLoans.forEach(l => {
+    const status = l.Status || l.status;
+    if (status === 'Requested' || status === 'Approved' || status === 'Rejected') return;
+
     const principal = Number(l.Principal || l.principal || l.Amount || l.amount || 0);
     const repaid = Number(l.Repaid_Amount || l.repaidAmount || 0);
-    const status = l.Status || l.status;
     totalLoanBorrowed += principal;
     totalLoanRepaidFromDB += repaid;
 
@@ -513,8 +517,11 @@ export function computeLoanPriorityList(members, transactions = [], loans = [], 
     const histClosed = histAmt > 0 && histRepaid >= histAmt;
     const histClosureDate = histClosed && lastHistRepayCol ? parseMMYYToEndDate(lastHistRepayCol) : null;
 
-    // 2. Live LoansDB records
-    const dbLoans = (loans || []).filter(l => (l.Member_Name || l.memberName) === name);
+    // 2. Live LoansDB records (only disbursed Active/Repaid loans count toward loan history)
+    const dbLoans = (loans || []).filter(l => {
+      const s = l.Status || l.status;
+      return (l.Member_Name || l.memberName) === name && s !== 'Requested' && s !== 'Approved' && s !== 'Rejected';
+    });
     let activeDbLoan = null;
     let latestClosedDbLoan = null;
     let latestDbIssueDate = null;

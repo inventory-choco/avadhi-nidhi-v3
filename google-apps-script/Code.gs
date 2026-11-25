@@ -122,6 +122,14 @@ function doPost(e) {
         result = issueLoan(ss, payload.data);
         break;
 
+      case "REQUEST_LOAN":
+        result = requestLoan(ss, payload.data);
+        break;
+
+      case "UPDATE_LOAN_STATUS":
+        result = updateLoanStatus(ss, payload.data);
+        break;
+
       case "REPAY_LOAN":
         result = repayLoan(ss, payload.data);
         break;
@@ -546,6 +554,87 @@ function issueLoan(ss, data) {
   ]);
 
   return { status: "success", loanId: loanId };
+}
+
+/**
+ * Submit Member Loan Request (Status = "Requested", no disbursement yet)
+ */
+function requestLoan(ss, data) {
+  const tz = Session.getScriptTimeZone();
+  const requestDate = data.requestDate || Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+  const loanId = "REQ-" + new Date().getTime();
+
+  const loanSheet = ss.getSheetByName(SHEET_LOANS);
+  loanSheet.appendRow([
+    loanId,
+    data.memberName,
+    data.loanType,
+    requestDate,
+    data.requiredDate || "",
+    Number(data.principal),
+    0,
+    "Requested",
+    typeof data.metaJson === "string" ? data.metaJson : JSON.stringify(data.metaJson || {})
+  ]);
+
+  return { status: "success", loanId: loanId };
+}
+
+/**
+ * Update Loan Request Status (Requested -> Approved / Rejected / Active when Paid)
+ */
+function updateLoanStatus(ss, data) {
+  const loanId = data.loanId;
+  const newStatus = data.status;
+  const tz = Session.getScriptTimeZone();
+  const todayStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+  const nowStr = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd HH:mm:ss");
+  const updatedBy = data.updatedBy || "Admin";
+
+  const loanSheet = ss.getSheetByName(SHEET_LOANS);
+  const values = loanSheet.getDataRange().getValues();
+  const headers = values[0];
+  const idIdx = headers.indexOf("Loan_ID");
+  const nameIdx = headers.indexOf("Member_Name");
+  const issueIdx = headers.indexOf("Issue_Date");
+  const princIdx = headers.indexOf("Principal");
+  const statusIdx = headers.indexOf("Status");
+  const schedIdx = headers.indexOf("Schedule_JSON");
+
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][idIdx]) === String(loanId)) {
+      const rowNum = i + 1;
+      loanSheet.getRange(rowNum, statusIdx + 1).setValue(newStatus);
+
+      if (newStatus === "Active") {
+        const issueDate = data.issueDate || todayStr;
+        const principal = Number(values[i][princIdx] || 0);
+        const memberName = values[i][nameIdx];
+
+        loanSheet.getRange(rowNum, issueIdx + 1).setValue(issueDate);
+        if (data.scheduleJson && schedIdx !== -1) {
+          loanSheet.getRange(rowNum, schedIdx + 1).setValue(
+            typeof data.scheduleJson === "string" ? data.scheduleJson : JSON.stringify(data.scheduleJson)
+          );
+        }
+
+        // Record disbursement in TransactionsDB when Admin marks request Paid / Issued
+        const txSheet = ss.getSheetByName(SHEET_TRANSACTIONS);
+        txSheet.appendRow([
+          issueDate,
+          memberName,
+          "Loan issued",
+          principal,
+          updatedBy,
+          nowStr
+        ]);
+      }
+
+      return { status: "success", loanId: loanId, newStatus: newStatus };
+    }
+  }
+
+  throw new Error("Loan request not found: " + loanId);
 }
 
 /**
