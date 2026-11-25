@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Avadhi Nidhi V3 — Community Fund & SahayaNidhi</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial,sans-serif' font-weight='900' font-size='28' fill='white'%3EAN%3C/text%3E%3C/svg%3E">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -576,6 +577,7 @@
               <table id="reports-matrix-table" class="w-full text-xs border-collapse text-left whitespace-nowrap min-w-[1000px]">
                 <thead>
                   <tr class="bg-slate-800/90 text-blue-400">
+                    <th rowspan="2" class="p-3 border border-slate-700 text-center font-bold w-12">SN</th>
                     <th rowspan="2" class="p-3 border border-slate-700 sticky left-0 z-20 bg-slate-800 font-bold min-w-[160px]">Member Name</th>
                     <th colspan="3" class="p-2 border border-slate-700 text-center font-bold text-blue-300">Monthly Payment (Net)</th>
                     <th colspan="3" class="p-2 border border-slate-700 text-center font-bold text-indigo-300">SahayaNidhi Fund</th>
@@ -830,7 +832,7 @@
     <div class="card-surface-elevated max-w-2xl w-full max-h-[92vh] overflow-y-auto p-5 sm:p-6 modal-content-spring relative">
       <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
         <div>
-          <h3 class="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 id="req-modal-title" class="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
             <span>📝</span><span>Avadhi Nidhi — Loan Request Form</span>
           </h3>
           <p class="text-[11px] text-slate-500 mt-0.5">Submits directly to the Loan tab for Admin approval & payout</p>
@@ -838,7 +840,31 @@
         <button data-close-modal class="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-xl px-2">&times;</button>
       </div>
 
+      <!-- Post-Submission Confirmation Panel (same window) -->
+      <div id="req-loan-success-panel" class="hidden mt-4 space-y-4">
+        <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/30 text-center space-y-1">
+          <span class="text-3xl block">✅</span>
+          <h4 id="req-success-heading" class="text-base font-extrabold text-emerald-800 dark:text-emerald-300">Loan Request Submitted!</h4>
+          <p class="text-xs text-emerald-700 dark:text-emerald-400">Your request is now visible under <strong>Loan Requests & Approvals</strong> with status <strong>Requested</strong>. You can edit it anytime until approved or rejected.</p>
+        </div>
+        <div id="req-success-summary" class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line font-mono leading-relaxed"></div>
+        <div class="flex flex-wrap justify-between items-center gap-2 pt-2">
+          <div class="flex gap-2">
+            <button type="button" id="btn-req-post-whatsapp" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-1.5">
+              <span>💬</span><span>Share on WhatsApp</span>
+            </button>
+            <button type="button" id="btn-req-post-pdf" class="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold">
+              📄 Download PDF
+            </button>
+          </div>
+          <button type="button" id="btn-req-post-done" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold">
+            Done & View Loans
+          </button>
+        </div>
+      </div>
+
       <form id="form-request-loan" class="mt-4 space-y-4">
+        <input type="hidden" id="req-loan-id" value="">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Request Date</label>

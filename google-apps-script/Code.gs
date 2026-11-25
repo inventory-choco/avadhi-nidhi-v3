@@ -50,8 +50,8 @@ function doGet(e) {
     const sahaya = getSheetData(ss.getSheetByName(SHEET_SAHAYA));
     const payments2026Sheet = ss.getSheetByName(SHEET_PAYMENTS_2026);
     const loans2026Sheet = ss.getSheetByName(SHEET_LOANS_2026);
-    const payments2026 = payments2026Sheet ? getSheetData(payments2026Sheet) : [];
-    const loans2026 = loans2026Sheet ? getSheetData(loans2026Sheet) : [];
+    const payments2026 = payments2026Sheet ? getDisplaySheetData(payments2026Sheet) : [];
+    const loans2026 = loans2026Sheet ? getDisplaySheetData(loans2026Sheet) : [];
 
     const response = {
       status: "success",
@@ -124,6 +124,10 @@ function doPost(e) {
 
       case "REQUEST_LOAN":
         result = requestLoan(ss, payload.data);
+        break;
+
+      case "UPDATE_LOAN_REQUEST":
+        result = updateLoanRequest(ss, payload.data);
         break;
 
       case "UPDATE_LOAN_STATUS":
@@ -251,6 +255,32 @@ function getSheetData(sheet) {
         val = Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
       }
       rowObj[header] = val;
+    });
+    rows.push(rowObj);
+  }
+  return rows;
+}
+
+/**
+ * Read sheet using exact display strings for headers & cells (prevents MM-YY headers turning into Date strings)
+ */
+function getDisplaySheetData(sheet) {
+  if (!sheet) return [];
+  const data = sheet.getDataRange().getDisplayValues();
+  if (data.length <= 1) return [];
+
+  const headers = data[0].map(h => String(h).trim());
+  const rows = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row.every(cell => cell === "" || cell === null)) continue;
+
+    const rowObj = { _rowIndex: i + 1 };
+    headers.forEach((header, colIdx) => {
+      if (header) {
+        rowObj[header] = row[colIdx];
+      }
     });
     rows.push(rowObj);
   }
@@ -578,6 +608,42 @@ function requestLoan(ss, data) {
   ]);
 
   return { status: "success", loanId: loanId };
+}
+
+/**
+ * Update an existing pending Loan Request (only allowed while Status === "Requested")
+ */
+function updateLoanRequest(ss, data) {
+  const loanId = data.loanId;
+  const loanSheet = ss.getSheetByName(SHEET_LOANS);
+  const values = loanSheet.getDataRange().getValues();
+  const headers = values[0];
+  const idIdx = headers.indexOf("Loan_ID");
+  const typeIdx = headers.indexOf("Loan_Type");
+  const issueIdx = headers.indexOf("Issue_Date");
+  const princIdx = headers.indexOf("Principal");
+  const statusIdx = headers.indexOf("Status");
+  const schedIdx = headers.indexOf("Schedule_JSON");
+
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][idIdx]) === String(loanId)) {
+      const currentStatus = String(values[i][statusIdx]);
+      if (currentStatus !== "Requested") {
+        throw new Error("Only pending 'Requested' loans can be edited.");
+      }
+      const rowNum = i + 1;
+      if (typeIdx !== -1) loanSheet.getRange(rowNum, typeIdx + 1).setValue(data.loanType);
+      if (issueIdx !== -1) loanSheet.getRange(rowNum, issueIdx + 1).setValue(data.requiredDate || "");
+      if (princIdx !== -1) loanSheet.getRange(rowNum, princIdx + 1).setValue(Number(data.principal));
+      if (schedIdx !== -1) {
+        loanSheet.getRange(rowNum, schedIdx + 1).setValue(
+          typeof data.metaJson === "string" ? data.metaJson : JSON.stringify(data.metaJson || {})
+        );
+      }
+      return { status: "success", loanId: loanId };
+    }
+  }
+  throw new Error("Loan request not found: " + loanId);
 }
 
 /**

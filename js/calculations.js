@@ -487,6 +487,34 @@ function parseMMYYToEndDate(mmYY) {
  * 6. Closed a loan within the last 3 months -> Cooldown (Least Priority)
  * 7. Currently has an active loan or unsettled negative balance due -> Least Priority
  */
+/**
+ * Resolve MM-YY column value (e.g. "10-25", "06-26") even if Google Sheets
+ * auto-formatted the header as a Date string (e.g. "Wed Oct 01 2025..." or "2025-10-01")
+ */
+export function getMonthColValue(row, mmYY) {
+  if (!row) return 0;
+  if (row[mmYY] !== undefined && row[mmYY] !== '') return Number(row[mmYY]) || 0;
+
+  const [mmStr, yyStr] = String(mmYY).split('-');
+  const targetMonth = Number(mmStr) - 1;
+  const targetYear = 2000 + Number(yyStr);
+  const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const monAbbr = monthNames[targetMonth];
+
+  for (const key of Object.keys(row)) {
+    const low = key.toLowerCase();
+    // Match "2025-10-01" or "oct-25" or "wed oct 01 2025..."
+    if (low.includes(`${targetYear}-${mmStr}`) || (low.includes(monAbbr) && low.includes(String(targetYear)))) {
+      return Number(row[key]) || 0;
+    }
+    const parsed = new Date(key);
+    if (!isNaN(parsed.getTime()) && parsed.getFullYear() === targetYear && parsed.getMonth() === targetMonth) {
+      return Number(row[key]) || 0;
+    }
+  }
+  return 0;
+}
+
 export function computeLoanPriorityList(members, transactions = [], loans = [], payments2026 = [], loans2026 = []) {
   const now = new Date();
   const loanRepayCols2026 = ['10-25', '11-25', '12-25', '01-26', '02-26', '03-26', '04-26', '05-26', '06-26', '07-26', '08-26', '09-26', '10-26'];
@@ -506,7 +534,7 @@ export function computeLoanPriorityList(members, transactions = [], loans = [], 
     let lastHistRepayCol = null;
     if (histLoan && histAmt > 0) {
       loanRepayCols2026.forEach(col => {
-        const val = Number(histLoan[col] || 0);
+        const val = getMonthColValue(histLoan, col);
         if (val > 0) {
           histRepaid += val;
           histRepayMonths++;

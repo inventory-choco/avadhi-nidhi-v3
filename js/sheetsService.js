@@ -134,6 +134,13 @@ class SheetsService {
   }
 
   /**
+   * Update an existing pending loan request (only while Status = Requested)
+   */
+  async updateLoanRequest(requestData) {
+    return await this.postAction('UPDATE_LOAN_REQUEST', requestData);
+  }
+
+  /**
    * Update loan request status (Approved, Rejected, Active when Paid)
    */
   async updateLoanStatus(statusData) {

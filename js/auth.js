@@ -271,6 +271,29 @@ class AuthService {
     return this.currentUser;
   }
 
+  /**
+   * Re-verify logged-in user against freshly synced Member_Details
+   */
+  verifyAndLogin(email, name, picture, members = []) {
+    const cleanEmail = String(email || '').toLowerCase().trim();
+    if (!cleanEmail || !Array.isArray(members) || members.length === 0) return this.currentUser;
+
+    const matched = members.find(m => String(m.Email || m.email || '').toLowerCase().trim() === cleanEmail);
+    if (matched) {
+      this.currentUser = {
+        ...(this.currentUser || {}),
+        name: matched.Name || matched.name || name,
+        email: cleanEmail,
+        type: matched.Type || matched.type || 'Member',
+        srNum: matched['Sr. Num'] || matched.srNum,
+        phone: matched.Phone || matched.phone || '',
+        picture: picture || this.currentUser?.picture || ''
+      };
+      localStorage.setItem(APP_CONFIG.storageKeys.sessionUser, JSON.stringify(this.currentUser));
+    }
+    return this.currentUser;
+  }
+
   decodeJwt(token) {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');

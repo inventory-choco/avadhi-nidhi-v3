@@ -320,12 +320,13 @@ export class ReportsService {
     const monthTitle = matrixData.monthInfo?.shortKey || matrixData.monthInfo?.label || activeMonthLabel;
 
     let rowsHtml = '';
-    rows.forEach(r => {
+    rows.forEach((r, idx) => {
       const nameColor = r.isOverdue ? '#ff5c5c' : '#ffffff';
       const gBalColor = r.grandBalance >= 0 ? '#1db954' : '#ff5c5c';
 
       rowsHtml += `
         <tr style="border-bottom: 1px solid #334155; font-size:13px;">
+          <td style="text-align:center; padding:8px; border:1px solid #334155; color:#94a3b8; font-weight:600;">${r.srNum || idx + 1}</td>
           <td style="padding:11px 12px; font-weight:bold; border:1px solid #334155; color:${nameColor}; text-align:center; white-space:nowrap;">${r.name}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.actualNetMonthlyOB}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155; color:${r.monthlyNetPaidCurrent >= 100 ? '#1db954' : '#ff5c5c'}; font-weight:600;">${r.monthlyNetPaidCurrent}</td>
@@ -352,7 +353,8 @@ export class ReportsService {
         <table style="width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; background:#0f172a; border:1px solid #334155;">
           <thead>
             <tr>
-              <th rowspan="2" style="background:#1e293b; color:#6ea8fe; padding:12px 10px; border:1px solid #334155; width:230px; text-align:center;">Member Name</th>
+              <th rowspan="2" style="background:#1e293b; color:#6ea8fe; padding:12px 6px; border:1px solid #334155; width:46px; text-align:center;">SN</th>
+              <th rowspan="2" style="background:#1e293b; color:#6ea8fe; padding:12px 10px; border:1px solid #334155; width:220px; text-align:center;">Member Name</th>
               <th colspan="3" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">Monthly Payment (Net)</th>
               <th colspan="3" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">SahayaNidhi Fund</th>
               <th colspan="4" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">Loan Tracking</th>
@@ -373,8 +375,9 @@ export class ReportsService {
           </thead>
           <tbody>
             ${rowsHtml}
-            <tr style="height:12px;"><td colspan="12" style="background:#0b1220; border:none;"></td></tr>
+            <tr style="height:12px;"><td colspan="13" style="background:#0b1220; border:none;"></td></tr>
             <tr style="background:#1e293b; font-weight:800; border-top:2px solid #6ea8fe; font-size:13px;">
+              <td style="padding:10px; border:1px solid #334155;"></td>
               <td style="padding:11px 12px; border:1px solid #334155; color:#6ea8fe; text-align:center;">GROUP TOTALS</td>
               <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.mOB}</td>
               <td style="text-align:center; padding:10px; border:1px solid #334155; color:#ffffff;">${sums.mPaid}</td>

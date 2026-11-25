@@ -16,7 +16,8 @@ import {
   calculateSmartAllocation,
   calculateFundSummary,
   buildMonthlyMatrix,
-  computeLoanPriorityList
+  computeLoanPriorityList,
+  getMonthColValue
 } from './calculations.js';
 import { REFERENCE_PAYMENTS_2026, REFERENCE_LOANS_2026 } from './data.js';
 import { ReceiptGenerator } from './receiptGenerator.js';
@@ -867,24 +868,34 @@ class AvadhiNidhiApp {
       const contactUAE = meta.contactUAE ? `+971 ${meta.contactUAE}` : '';
 
       const isApproved = status === 'Approved';
+      const currentUser = authService.getCurrentUser();
+      const isRequester = currentUser && String(currentUser.name || '').toLowerCase() === String(memberName || '').toLowerCase();
+      const canEdit = !isApproved && (isRequester || isAdmin);
+
       const statusBadge = isApproved
         ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">✅ Approved (Awaiting Payout)</span>`
         : `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">⏳ Requested</span>`;
 
-      const adminControls = isAdmin ? `
+      const actionControls = (canEdit || isAdmin) ? `
         <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex flex-wrap justify-end gap-2">
-          ${!isApproved ? `
+          ${canEdit ? `
+            <button class="btn-edit-loan-req px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold" data-loan-id="${loanId}">
+              ✏️ Edit Request
+            </button>
+          ` : ''}
+          ${isAdmin && !isApproved ? `
             <button class="btn-loan-status px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold" data-loan-id="${loanId}" data-status="Rejected">
               ❌ Reject
             </button>
             <button class="btn-loan-status px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm" data-loan-id="${loanId}" data-status="Approved">
               ✅ Approve Request
             </button>
-          ` : `
+          ` : ''}
+          ${isAdmin && isApproved ? `
             <button class="btn-loan-status px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm" data-loan-id="${loanId}" data-status="Active">
               💸 Mark Paid & Issue Loan
             </button>
-          `}
+          ` : ''}
         </div>
       ` : '';
 
@@ -909,10 +920,18 @@ class AvadhiNidhiApp {
             </div>
             ${contactUAE ? `<p class="text-[11px] text-slate-400 mt-2">📞 ${contactUAE}${meta.repaymentMonths ? ` • ${meta.repaymentMonths} mo(s) plan` : ''}</p>` : ''}
           </div>
-          ${adminControls}
+          ${actionControls}
         </div>
       `;
     }).join('');
+
+    container.querySelectorAll('.btn-edit-loan-req').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const loanId = e.currentTarget.getAttribute('data-loan-id');
+        const found = (this.state.loans || []).find(l => (l.Loan_ID || l.loanId) === loanId);
+        if (found) this.openRequestLoanModal(found);
+      });
+    });
 
     container.querySelectorAll('.btn-loan-status').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -1042,7 +1061,11 @@ class AvadhiNidhiApp {
     const container = document.getElementById('loans-2026-reference');
     if (!container) return;
 
-    const rows = this.state.loans2026 || [];
+    const rawRows = this.state.loans2026 || [];
+    const rows = rawRows.filter(r => {
+      const n = String(r.Name || r.name || '').trim();
+      return n !== '' && n.toUpperCase() !== 'TOTAL';
+    });
     if (rows.length === 0) {
       container.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">No 2026_Loan reference rows found.</div>`;
       return;
@@ -1056,7 +1079,7 @@ class AvadhiNidhiApp {
       totalLoan += amt;
       const iss = r['LOAN ISSUE DATE'] || '—';
       const repayCells = cols.map(c => {
-        const v = Number(r[c] || 0);
+        const v = getMonthColValue(r, c);
         return `<td class="px-2 py-2 text-center tabular-nums ${v > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-300 dark:text-slate-700'}">${v > 0 ? v : '—'}</td>`;
       }).join('');
 
@@ -1087,7 +1110,7 @@ class AvadhiNidhiApp {
             <td class="px-2 py-2"></td>
             <td class="px-2 py-2 text-center tabular-nums">${totalLoan}</td>
             ${cols.map(c => {
-              const sum = rows.reduce((a, r) => a + Number(r[c] || 0), 0);
+              const sum = rows.reduce((a, r) => a + getMonthColValue(r, c), 0);
               return `<td class="px-2 py-2 text-center tabular-nums">${sum > 0 ? sum : '—'}</td>`;
             }).join('')}
           </tr>
@@ -1297,16 +1320,17 @@ class AvadhiNidhiApp {
       this.activeReportsMonth
     );
 
-    // 1. Render Live 12-Column Table Body
+    // 1. Render Live 13-Column Table Body (with SN)
     const tbody = document.getElementById('reports-matrix-tbody');
     if (tbody) {
-      tbody.innerHTML = matrixData.rows.map(r => {
+      tbody.innerHTML = matrixData.rows.map((r, idx) => {
         const nameColor = r.isOverdue ? 'text-rose-400 font-bold' : 'text-white font-medium';
         const gBalColor = r.grandBalance >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
         const mPaidColor = r.monthlyNetPaidCurrent >= 100 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold';
 
         return `
           <tr class="hover:bg-slate-800/50 transition-colors">
+            <td class="p-2 border border-slate-800 text-center text-slate-400 font-semibold">${r.srNum || idx + 1}</td>
             <td class="p-2.5 border border-slate-800 sticky left-0 bg-slate-900/95 z-10 ${nameColor}">${r.name} ${r.isOverdue ? '<span class="text-[10px] text-rose-500 font-normal">⚠️</span>' : ''}</td>
             <td class="p-2 border border-slate-800 text-center text-slate-300">${r.actualNetMonthlyOB}</td>
             <td class="p-2 border border-slate-800 text-center ${mPaidColor}">${r.monthlyNetPaidCurrent}</td>
@@ -1331,6 +1355,7 @@ class AvadhiNidhiApp {
       const gBalColor = sums.gBal >= 0 ? 'text-emerald-400' : 'text-rose-400';
       tfoot.innerHTML = `
         <tr>
+          <td class="p-2 border border-slate-700"></td>
           <td class="p-2.5 border border-slate-700 sticky left-0 bg-slate-800 z-10 text-blue-400">GROUP TOTALS</td>
           <td class="p-2 border border-slate-700 text-center">${sums.mOB}</td>
           <td class="p-2 border border-slate-700 text-center text-emerald-400">${sums.mPaid}</td>
@@ -1529,9 +1554,17 @@ class AvadhiNidhiApp {
     modal.classList.remove('hidden');
   }
 
-  openRequestLoanModal() {
+  openRequestLoanModal(existingLoan = null) {
     const modal = document.getElementById('modal-request-loan');
     if (!modal) return;
+
+    const formEl = document.getElementById('form-request-loan');
+    const successEl = document.getElementById('req-loan-success-panel');
+    const titleEl = document.getElementById('req-modal-title');
+    const idInput = document.getElementById('req-loan-id');
+
+    if (formEl) formEl.classList.remove('hidden');
+    if (successEl) successEl.classList.add('hidden');
 
     const user = authService.getCurrentUser();
     const isAdmin = authService.isAdmin();
@@ -1545,9 +1578,31 @@ class AvadhiNidhiApp {
     const monthsInput = document.getElementById('req-loan-months');
     const repayStartInput = document.getElementById('req-loan-repay-start');
     const phoneUaeInput = document.getElementById('req-loan-phone-uae');
+    const phoneIndiaInput = document.getElementById('req-loan-phone-india');
+    const reasonSel = document.getElementById('req-loan-reason');
+    const otherReasonEl = document.getElementById('req-loan-other-reason');
 
-    if (dateInput) dateInput.value = todayStr;
+    let meta = {};
+    if (existingLoan) {
+      try {
+        const raw = existingLoan.Schedule_JSON || existingLoan.scheduleJson;
+        meta = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      } catch (e) { meta = {}; }
+    }
 
+    const editLoanId = existingLoan ? (existingLoan.Loan_ID || existingLoan.loanId || '') : '';
+    if (idInput) idInput.value = editLoanId;
+    if (titleEl) {
+      titleEl.innerHTML = editLoanId
+        ? `<span>✏️</span><span>Edit Pending Loan Request (${editLoanId})</span>`
+        : `<span>📝</span><span>Avadhi Nidhi — Loan Request Form</span>`;
+    }
+
+    if (dateInput) {
+      dateInput.value = existingLoan ? (existingLoan.Request_Date || existingLoan.requestDate || todayStr) : todayStr;
+    }
+
+    const targetMemberName = existingLoan ? (existingLoan.Member_Name || existingLoan.memberName) : (user?.name || '');
     if (memberSelect) {
       memberSelect.innerHTML = '';
       this.state.members.forEach(m => {
@@ -1555,29 +1610,62 @@ class AvadhiNidhiApp {
         const opt = document.createElement('option');
         opt.value = name;
         opt.textContent = name;
-        if (user && name.toLowerCase() === user.name.toLowerCase()) opt.selected = true;
+        if (targetMemberName && name.toLowerCase() === targetMemberName.toLowerCase()) opt.selected = true;
         memberSelect.appendChild(opt);
       });
-      memberSelect.disabled = !isAdmin && Boolean(user?.name);
+      memberSelect.disabled = Boolean(editLoanId) || (!isAdmin && Boolean(user?.name));
     }
 
-    // Pre-fill UAE phone from member record if available
-    const selectedMember = this.state.members.find(m => (m.Name || m.name) === memberSelect?.value);
-    if (phoneUaeInput && selectedMember) {
-      const digits = String(selectedMember.Phone || selectedMember.phone || '').replace(/\D/g, '');
-      if (digits.length >= 9) phoneUaeInput.value = digits.slice(-9);
+    if (phoneUaeInput) {
+      if (meta.contactUAE) {
+        phoneUaeInput.value = meta.contactUAE;
+      } else {
+        const selectedMember = this.state.members.find(m => (m.Name || m.name) === memberSelect?.value);
+        const digits = selectedMember ? String(selectedMember.Phone || selectedMember.phone || '').replace(/\D/g, '') : '';
+        phoneUaeInput.value = digits.length >= 9 ? digits.slice(-9) : '';
+      }
     }
+    if (phoneIndiaInput) phoneIndiaInput.value = meta.contactIndia || '';
 
-    // Default Required By Date (+26 days for Vacation Loan)
     if (reqByInput) {
-      const d = new Date();
-      d.setDate(d.getDate() + 26);
-      reqByInput.value = d.toISOString().split('T')[0];
+      if (existingLoan && (meta.requiredDate || existingLoan.Issue_Date)) {
+        reqByInput.value = meta.requiredDate || existingLoan.Issue_Date;
+      } else {
+        const d = new Date();
+        d.setDate(d.getDate() + 26);
+        reqByInput.value = d.toISOString().split('T')[0];
+      }
     }
 
-    if (typeSelect) typeSelect.value = 'Vacation Loan';
-    if (amountInput) amountInput.value = 2500;
-    if (monthsInput) monthsInput.value = 5;
+    if (typeSelect) typeSelect.value = existingLoan ? (existingLoan.Loan_Type || existingLoan.loanType || 'Vacation Loan') : 'Vacation Loan';
+    if (amountInput) amountInput.value = existingLoan ? Number(existingLoan.Principal || existingLoan.principal || 2500) : 2500;
+    if (monthsInput) monthsInput.value = meta.repaymentMonths || 5;
+    if (repayStartInput) {
+      if (meta.repayStart) {
+        repayStartInput.value = meta.repayStart;
+        repayStartInput.dataset.manual = '1';
+      } else {
+        delete repayStartInput.dataset.manual;
+      }
+    }
+
+    if (reasonSel && otherReasonEl) {
+      const rVal = meta.reason || '';
+      const standardOpts = ['Annual Leave', 'Emergency Leave', 'Medical Emergency', 'Family Emergency'];
+      if (!rVal) {
+        reasonSel.value = '';
+        otherReasonEl.classList.add('hidden');
+        otherReasonEl.value = '';
+      } else if (standardOpts.includes(rVal)) {
+        reasonSel.value = rVal;
+        otherReasonEl.classList.add('hidden');
+        otherReasonEl.value = '';
+      } else {
+        reasonSel.value = 'Other';
+        otherReasonEl.classList.remove('hidden');
+        otherReasonEl.value = rVal;
+      }
+    }
 
     // Initialize Signature Pad
     this.initReqSignaturePad();
@@ -2112,10 +2200,12 @@ class AvadhiNidhiApp {
           }
         }
 
-        document.getElementById('modal-request-loan').classList.add('hidden');
-        this.showToast(`Submitting loan request for ${memberName}...`, "info");
+        const editLoanId = document.getElementById('req-loan-id')?.value || '';
+        const summaryText = document.getElementById('req-loan-summary')?.textContent || '';
+        this.showToast(editLoanId ? `Updating loan request ${editLoanId}...` : `Submitting loan request for ${memberName}...`, "info");
 
-        const res = await sheetsService.requestLoan({
+        const payload = {
+          loanId: editLoanId,
           memberName,
           loanType,
           requestDate,
@@ -2130,12 +2220,44 @@ class AvadhiNidhiApp {
             repayStart,
             repayEnd
           }
-        });
+        };
+
+        const res = editLoanId
+          ? await sheetsService.updateLoanRequest(payload)
+          : await sheetsService.requestLoan(payload);
 
         if (res.status === 'success') {
-          this.showToast("Loan request submitted! Visible on Loans tab.", "success");
+          this.showToast(editLoanId ? "Loan request updated!" : "Loan request submitted!", "success");
+
+          // Show post-submission Share WhatsApp & PDF panel inside the same modal window
+          const formEl = document.getElementById('form-request-loan');
+          const successEl = document.getElementById('req-loan-success-panel');
+          const headingEl = document.getElementById('req-success-heading');
+          const summaryBox = document.getElementById('req-success-summary');
+          if (formEl) formEl.classList.add('hidden');
+          if (successEl) successEl.classList.remove('hidden');
+          if (headingEl) headingEl.textContent = editLoanId ? 'Loan Request Updated!' : 'Loan Request Submitted!';
+          if (summaryBox) summaryBox.textContent = summaryText;
+
+          const postWaBtn = document.getElementById('btn-req-post-whatsapp');
+          if (postWaBtn) {
+            postWaBtn.onclick = () => {
+              window.open(`https://wa.me/?text=${encodeURIComponent(summaryText)}`, '_blank', 'noopener');
+            };
+          }
+          const postPdfBtn = document.getElementById('btn-req-post-pdf');
+          if (postPdfBtn) {
+            postPdfBtn.onclick = () => this.exportLoanRequestPDF();
+          }
+          const postDoneBtn = document.getElementById('btn-req-post-done');
+          if (postDoneBtn) {
+            postDoneBtn.onclick = () => {
+              document.getElementById('modal-request-loan')?.classList.add('hidden');
+              this.switchTab('loans');
+            };
+          }
+
           await this.refreshData();
-          this.switchTab('loans');
         } else {
           this.showToast(res.message || "Failed to submit loan request", "error");
         }
