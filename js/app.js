@@ -532,7 +532,7 @@ class AvadhiNidhiApp {
       const isNegSavings = m.currentSavingsBalance < 0;
 
       tr.innerHTML = `
-        <td class="px-3 sm:px-4 py-2.5 sm:py-3 font-semibold sticky left-0 z-10 ${isMe ? 'bg-emerald-50 dark:bg-emerald-950/95 text-emerald-700 dark:text-emerald-300' : 'bg-white dark:bg-[#111a2e] text-slate-900 dark:text-white'} shadow-[2px_0_5px_rgba(0,0,0,0.05)]">${m.name}${this.youBadge(m.name)}</td>
+        <td class="px-3 sm:px-4 py-2.5 sm:py-3 font-semibold sticky-name-col ${isMe ? '!bg-emerald-50 dark:!bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}">${m.name}${this.youBadge(m.name)}</td>
         <td class="px-3 sm:px-4 py-2.5 sm:py-3 ${isNegOB ? 'text-rose-500 font-bold' : 'text-slate-600 dark:text-slate-300'} tabular-nums">
           ${formatCurrency(m.ob)}
         </td>
@@ -605,8 +605,8 @@ class AvadhiNidhiApp {
           <span>ℹ️</span>
           <span><strong>2026 Historical Ledger (2026_monthly_Payments):</strong> Negative Nov figures reflect cash payouts or loan balance settlements carried into <strong>OB (Nov-26)</strong>.</span>
         </div>
-        <div class="table-matrix-wrapper border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-          <table class="table-matrix w-full border-collapse">
+        <div class="table-matrix-wrapper border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+          <table class="table-matrix w-max min-w-full border-collapse">
             <thead>
               <tr class="bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                 <th class="px-3 py-3 sticky-col text-left">Member Name</th>
@@ -683,8 +683,8 @@ class AvadhiNidhiApp {
     `;
 
     container.innerHTML = `
-      <div class="table-matrix-wrapper border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <table class="table-matrix w-full border-collapse">
+      <div class="table-matrix-wrapper border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+        <table class="table-matrix w-max min-w-full border-collapse">
           <thead>${theadHtml}</thead>
           <tbody>${tbodyHtml}</tbody>
           <tfoot>${tfootHtml}</tfoot>
@@ -725,14 +725,16 @@ class AvadhiNidhiApp {
 
     records.forEach(r => {
       const tr = document.createElement('tr');
-      tr.className = 'border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs';
+      const memName = r.Member_Name || r.memberName || '—';
+      const isMe = this.isCurrentUser(memName);
+      tr.className = `border-b border-slate-200 dark:border-slate-800 ${isMe ? 'bg-emerald-50/90 dark:bg-emerald-950/35' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'} text-xs whitespace-nowrap`;
       const rType = r.Type || r.type || '';
       const isDisbursed = rType === 'Charity Disbursement' || rType === 'Sahaya Nidhi Disbursement' || rType === 'Expense';
 
       tr.innerHTML = `
+        <td class="px-3 py-2.5 font-semibold sticky-name-col ${isMe ? '!bg-emerald-50 dark:!bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}">${memName}${this.youBadge(memName)}</td>
         <td class="px-3 py-2.5 text-slate-500">${formatDate(r.Date || r.date)}</td>
         <td class="px-3 py-2.5 font-bold ${isDisbursed ? 'text-rose-500' : 'text-indigo-600 dark:text-indigo-400'}">${r.Type || r.type}</td>
-        <td class="px-3 py-2.5 text-slate-900 dark:text-white font-medium">${r.Member_Name || r.memberName || '—'}</td>
         <td class="px-3 py-2.5 font-black ${isDisbursed ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'} tabular-nums">
           ${isDisbursed ? '-' : '+'}${formatCurrency(r.Amount || r.amount)}
         </td>
@@ -1129,7 +1131,7 @@ class AvadhiNidhiApp {
       const isMe = this.isCurrentUser(mName);
       return `
         <tr class="border-b border-slate-100 dark:border-slate-800 text-[11px] ${isMe ? 'bg-emerald-50/90 dark:bg-emerald-950/35' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}">
-          <td class="px-3 py-2 font-bold whitespace-nowrap sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.06)] ${isMe ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-white dark:bg-[#111a2e] text-slate-900 dark:text-white'}">${mName}${this.youBadge(mName)}</td>
+          <td class="px-3 py-2 font-bold sticky-name-col ${isMe ? '!bg-emerald-50 dark:!bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}">${mName}${this.youBadge(mName)}</td>
           <td class="px-2 py-2 text-center text-slate-500 whitespace-nowrap">${iss || '—'}</td>
           <td class="px-2 py-2 text-center font-bold tabular-nums ${amt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}">${amt > 0 ? amt : '—'}</td>
           ${repayCells}
@@ -1138,10 +1140,10 @@ class AvadhiNidhiApp {
     }).join('');
 
     container.innerHTML = `
-      <table class="w-full text-left border-collapse whitespace-nowrap">
-        <thead class="bg-slate-50 dark:bg-slate-900/60 text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800">
+      <table class="w-max min-w-full text-left border-collapse whitespace-nowrap">
+        <thead class="bg-slate-50 dark:bg-slate-900 text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800">
           <tr>
-            <th class="px-3 py-2.5 sticky left-0 bg-slate-50 dark:bg-slate-900">Name</th>
+            <th class="px-3 py-2.5 sticky-name-col bg-slate-50 dark:bg-slate-900">Name</th>
             <th class="px-2 py-2.5 text-center">Issue Date</th>
             <th class="px-2 py-2.5 text-center">Loan Amt</th>
             ${cols.map(c => `<th class="px-2 py-2.5 text-center">${c}</th>`).join('')}
@@ -1227,16 +1229,17 @@ class AvadhiNidhiApp {
 
     list.forEach(t => {
       const tr = document.createElement('tr');
-      tr.className = 'border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs';
+      const name = t.Member_Name || t.memberName;
+      const isMe = this.isCurrentUser(name);
+      tr.className = `border-b border-slate-200 dark:border-slate-800 ${isMe ? 'bg-emerald-50/90 dark:bg-emerald-950/35' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'} text-xs whitespace-nowrap`;
 
       const type = t.Type || t.type;
       const amt = Number(t.Amount || t.amount || 0);
       const isPositive = type === 'Monthly Payment' || type === 'SahayaNidhi' || type === 'Loan Repayment';
-      const name = t.Member_Name || t.memberName;
 
       tr.innerHTML = `
+        <td class="px-3 py-2.5 font-bold sticky-name-col ${isMe ? '!bg-emerald-50 dark:!bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}">${name}${this.youBadge(name)}</td>
         <td class="px-3 py-2.5 text-slate-500">${formatDate(t.Date || t.date)}</td>
-        <td class="px-3 py-2.5 font-bold text-slate-900 dark:text-white">${name}</td>
         <td class="px-3 py-2.5 font-medium">${type}</td>
         <td class="px-3 py-2.5 font-black ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'} tabular-nums">
           ${isPositive ? '+' : '-'}${formatCurrency(amt)}
@@ -1377,8 +1380,8 @@ class AvadhiNidhiApp {
 
         return `
           <tr class="${isMe ? 'bg-emerald-950/60 ring-1 ring-inset ring-emerald-500/40' : 'hover:bg-slate-800/50'} transition-colors">
-            <td class="p-2 border border-slate-800 sticky left-0 z-10 ${stickyBg} text-center text-slate-400 font-semibold w-[44px] min-w-[44px]">${r.srNum || idx + 1}</td>
-            <td class="p-2.5 border border-slate-800 sticky left-[44px] z-10 ${stickyBg} shadow-[2px_0_6px_rgba(0,0,0,0.35)] ${nameColor}">${r.name}${this.youBadge(r.name)} ${r.isOverdue ? '<span class="text-[10px] text-rose-500 font-normal">⚠️</span>' : ''}</td>
+            <td class="p-2 border border-slate-800 sticky left-0 z-10 ${stickyBg} text-center text-slate-400 font-semibold w-[36px] min-w-[36px]">${r.srNum || idx + 1}</td>
+            <td class="p-2 border border-slate-800 sticky left-[36px] z-10 ${stickyBg} w-[112px] min-w-[112px] max-w-[116px] sm:w-auto sm:min-w-[165px] sm:max-w-none whitespace-normal sm:whitespace-nowrap leading-tight shadow-[2px_0_6px_rgba(0,0,0,0.35)] ${nameColor}">${r.name}${this.youBadge(r.name)} ${r.isOverdue ? '<span class="text-[10px] text-rose-500 font-normal">⚠️</span>' : ''}</td>
             <td class="p-2 border border-slate-800 text-center text-slate-300">${r.actualNetMonthlyOB}</td>
             <td class="p-2 border border-slate-800 text-center ${mPaidColor}">${r.monthlyNetPaidCurrent}</td>
             <td class="p-2 border border-slate-800 text-center text-blue-400 font-bold">${r.monthlyNetTotal}</td>
@@ -1402,8 +1405,8 @@ class AvadhiNidhiApp {
       const gBalColor = sums.gBal >= 0 ? 'text-emerald-400' : 'text-rose-400';
       tfoot.innerHTML = `
         <tr>
-          <td class="p-2 border border-slate-700 sticky left-0 bg-slate-800 z-10 w-[44px] min-w-[44px]"></td>
-          <td class="p-2.5 border border-slate-700 sticky left-[44px] bg-slate-800 z-10 text-blue-400 shadow-[2px_0_6px_rgba(0,0,0,0.35)]">GROUP TOTALS</td>
+          <td class="p-2 border border-slate-700 sticky left-0 bg-slate-800 z-10 w-[36px] min-w-[36px]"></td>
+          <td class="p-2 border border-slate-700 sticky left-[36px] bg-slate-800 z-10 text-blue-400 w-[112px] min-w-[112px] max-w-[116px] sm:w-auto sm:min-w-[165px] sm:max-w-none whitespace-normal sm:whitespace-nowrap leading-tight shadow-[2px_0_6px_rgba(0,0,0,0.35)]">GROUP TOTALS</td>
           <td class="p-2 border border-slate-700 text-center">${sums.mOB}</td>
           <td class="p-2 border border-slate-700 text-center text-emerald-400">${sums.mPaid}</td>
           <td class="p-2 border border-slate-700 text-center text-blue-400 font-bold">${sums.mTotal}</td>

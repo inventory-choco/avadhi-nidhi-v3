@@ -264,19 +264,19 @@
         </div>
 
         <!-- 14-Member Standing Summary Table -->
-        <div class="card-surface overflow-hidden">
+        <div class="card-surface">
           <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
             <div>
               <h3 class="text-sm font-bold text-slate-900 dark:text-white">Members Fund Standing</h3>
-              <p class="text-xs text-slate-500">Live balances, dues, and loan status for all 14 members</p>
+              <p class="text-xs text-slate-500">Swipe table left/right • Name stays frozen</p>
             </div>
-            <span class="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">14 Members</span>
+            <span class="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full shrink-0">14 Members</span>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-left">
-              <thead class="bg-slate-50 dark:bg-slate-900/95 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap">
+            <table class="w-max min-w-full text-left">
+              <thead class="bg-slate-50 dark:bg-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap">
                 <tr>
-                  <th class="px-3 sm:px-4 py-3 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 shadow-[2px_0_5px_rgba(0,0,0,0.06)]">Member Name</th>
+                  <th class="px-3 sm:px-4 py-3 sticky-name-col bg-slate-50 dark:bg-slate-900">Member Name</th>
                   <th class="px-3 sm:px-4 py-3">OB (Nov-26)</th>
                   <th class="px-3 sm:px-4 py-3">Net Savings</th>
                   <th class="px-3 sm:px-4 py-3">Sahaya Fund</th>
@@ -339,18 +339,18 @@
         </div>
 
         <!-- Sahaya Ledger Table -->
-        <div class="card-surface overflow-hidden">
+        <div class="card-surface">
           <div class="p-4 border-b border-slate-200 dark:border-slate-800">
             <h3 class="text-sm font-bold text-slate-900 dark:text-white">Sahaya Nidhi Audit Ledger</h3>
             <p class="text-xs text-slate-500">Every automatic 5 AED deduction and Sahaya Nidhi disbursement recorded transparently</p>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-left">
-              <thead class="bg-slate-50 dark:bg-slate-900/60 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800">
+            <table class="w-max min-w-full text-left">
+              <thead class="bg-slate-50 dark:bg-slate-900 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap">
                 <tr>
+                  <th class="px-3 py-2.5 sticky-name-col bg-slate-50 dark:bg-slate-900">Member</th>
                   <th class="px-3 py-2.5">Date</th>
                   <th class="px-3 py-2.5">Type</th>
-                  <th class="px-3 py-2.5">Member</th>
                   <th class="px-3 py-2.5">Amount</th>
                   <th class="px-3 py-2.5">Cause / Purpose</th>
                   <th class="px-3 py-2.5">Notes</th>
@@ -444,7 +444,7 @@
         </div>
 
         <!-- 2026 Historical Loan Reference (Read-Only) -->
-        <div class="card-surface overflow-hidden">
+        <div class="card-surface">
           <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -488,13 +488,13 @@
         </div>
 
         <!-- Master Transactions Table -->
-        <div class="card-surface overflow-hidden">
+        <div class="card-surface">
           <div class="overflow-x-auto">
-            <table class="w-full text-left font-mono">
-              <thead class="bg-slate-50 dark:bg-slate-900/60 text-xs uppercase text-slate-500 border-b border-slate-200 dark:border-slate-800">
+            <table class="w-max min-w-full text-left font-mono">
+              <thead class="bg-slate-50 dark:bg-slate-900 text-xs uppercase text-slate-500 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap">
                 <tr>
+                  <th class="px-3 py-2.5 sticky-name-col bg-slate-50 dark:bg-slate-900">Member_Name</th>
                   <th class="px-3 py-2.5">Date</th>
-                  <th class="px-3 py-2.5">Member_Name</th>
                   <th class="px-3 py-2.5">Type</th>
                   <th class="px-3 py-2.5">Amount</th>
                   <th class="px-3 py-2.5">Updated By UserName</th>
@@ -576,9 +576,9 @@
             <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-900 text-white shadow-inner">
               <table id="reports-matrix-table" class="w-full text-xs border-collapse text-left whitespace-nowrap min-w-[1000px]">
                 <thead>
-                  <tr class="bg-slate-800/90 text-blue-400">
-                    <th rowspan="2" class="p-2.5 border border-slate-700 sticky left-0 z-20 bg-slate-800 text-center font-bold w-[44px] min-w-[44px]">SN</th>
-                    <th rowspan="2" class="p-3 border border-slate-700 sticky left-[44px] z-20 bg-slate-800 font-bold min-w-[155px] shadow-[2px_0_6px_rgba(0,0,0,0.35)]">Member Name</th>
+                  <tr class="bg-slate-800 text-blue-400">
+                    <th rowspan="2" class="p-2 border border-slate-700 sticky left-0 z-20 bg-slate-800 text-center font-bold w-[36px] min-w-[36px]">SN</th>
+                    <th rowspan="2" class="p-2.5 border border-slate-700 sticky left-[36px] z-20 bg-slate-800 font-bold w-[112px] min-w-[112px] max-w-[116px] sm:w-auto sm:min-w-[165px] sm:max-w-none whitespace-normal sm:whitespace-nowrap leading-tight shadow-[2px_0_6px_rgba(0,0,0,0.35)]">Member Name</th>
                     <th colspan="3" class="p-2 border border-slate-700 text-center font-bold text-blue-300">Monthly Payment (Net)</th>
                     <th colspan="3" class="p-2 border border-slate-700 text-center font-bold text-indigo-300">SahayaNidhi Fund</th>
                     <th colspan="4" class="p-2 border border-slate-700 text-center font-bold text-slate-300">Loan Tracking</th>
