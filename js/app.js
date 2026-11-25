@@ -959,7 +959,7 @@ class AvadhiNidhiApp {
             <td class="p-2 border border-slate-800 text-center text-indigo-400 font-medium">${r.SahayaNidhiCurrent}</td>
             <td class="p-2 border border-slate-800 text-center text-indigo-400 font-bold">${r.SahayaNidhiTotal}</td>
             <td class="p-2 border border-slate-800 text-center text-slate-300">${r.loanAmount > 0 ? r.loanAmount : '—'}</td>
-            <td class="p-2 border border-slate-800 text-center text-[11px] text-slate-400">${r.loanIssued}</td>
+            <td class="p-2 border border-slate-800 text-center text-[11px] text-slate-400">${r.loanAmount > 0 ? r.loanIssued : ''}</td>
             <td class="p-2 border border-slate-800 text-center text-slate-300">${r.loanAmount > 0 ? r.loanRepaid : '—'}</td>
             <td class="p-2 border border-slate-800 text-center text-slate-300">${r.loanAmount > 0 ? r.loanBalance : '—'}</td>
             <td class="p-2 border border-slate-800 text-center ${gBalColor} bg-slate-950/40">${r.grandBalance}</td>

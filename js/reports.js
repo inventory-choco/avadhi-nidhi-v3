@@ -163,18 +163,33 @@ export class ReportsService {
       const memLoans = (loans || []).filter(l => (l.Member_Name || l.memberName) === name);
       let loanAmount = 0;
       let loanRepaid = 0;
-      let loanIssued = '—';
+      let loanIssued = '';
       let loanIssuedRaw = null;
       let loanDueDate = null;
 
       if (memLoans.length > 0) {
-        // Take the latest / active loan
-        const latestLoan = memLoans[memLoans.length - 1];
-        loanAmount = Number(latestLoan.Principal || latestLoan.principal || latestLoan.Amount || latestLoan.amount || 0);
-        loanRepaid = Number(latestLoan.Repaid_Amount || latestLoan.repaidAmount || 0);
-        loanIssuedRaw = latestLoan.Issue_Date || latestLoan.issueDate || null;
-        loanIssued = formatDate(loanIssuedRaw);
-        loanDueDate = latestLoan.dueDate || null;
+        // Prioritize active (unrepaid) loan; fallback to latest loan
+        const activeOrLatest = memLoans.find(l => {
+          const p = Number(l.Principal || l.principal || l.Amount || l.amount || 0);
+          const rep = Number(l.Repaid_Amount || l.repaidAmount || 0);
+          return (l.Status || l.status) !== 'Repaid' && rep < p;
+        }) || memLoans[memLoans.length - 1];
+
+        loanAmount = Number(activeOrLatest.Principal || activeOrLatest.principal || activeOrLatest.Amount || activeOrLatest.amount || 0);
+        loanRepaid = Number(activeOrLatest.Repaid_Amount || activeOrLatest.repaidAmount || 0);
+        loanIssuedRaw = activeOrLatest.Issue_Date || activeOrLatest.issueDate || null;
+        if (loanIssuedRaw) {
+          const d = new Date(loanIssuedRaw);
+          if (!isNaN(d.getTime())) {
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yy = String(d.getFullYear()).slice(-2);
+            loanIssued = `${dd}-${mm}-${yy}`;
+          } else {
+            loanIssued = String(loanIssuedRaw);
+          }
+        }
+        loanDueDate = activeOrLatest.dueDate || null;
       }
 
       const loanBalance = Math.max(0, loanAmount - loanRepaid);
@@ -290,7 +305,8 @@ export class ReportsService {
     container.style.position = 'fixed';
     container.style.left = '-9999px';
     container.style.top = '0';
-    container.style.width = '1250px';
+    container.style.width = '1320px';
+    container.style.boxSizing = 'border-box';
     container.style.backgroundColor = '#0b1220';
     container.style.color = '#ffffff';
     container.style.fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
@@ -298,7 +314,7 @@ export class ReportsService {
 
     const rows = matrixData.rows;
     const sums = matrixData.sums;
-    const monthTitle = matrixData.monthInfo?.label || activeMonthLabel;
+    const monthTitle = matrixData.monthInfo?.shortKey || matrixData.monthInfo?.label || activeMonthLabel;
 
     let rowsHtml = '';
     rows.forEach(r => {
@@ -307,7 +323,7 @@ export class ReportsService {
 
       rowsHtml += `
         <tr style="border-bottom: 1px solid #334155; font-size:13px;">
-          <td style="padding:10px 12px; font-weight:bold; border:1px solid #334155; color:${nameColor}; white-space:nowrap;">${r.name}</td>
+          <td style="padding:11px 12px; font-weight:bold; border:1px solid #334155; color:${nameColor}; text-align:center; white-space:nowrap;">${r.name}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.actualNetMonthlyOB}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155; color:${r.monthlyNetPaidCurrent >= 100 ? '#1db954' : '#ff5c5c'}; font-weight:600;">${r.monthlyNetPaidCurrent}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155; font-weight:bold; color:#6ea8fe;">${r.monthlyNetTotal}</td>
@@ -315,7 +331,7 @@ export class ReportsService {
           <td style="text-align:center; padding:8px; border:1px solid #334155; color:#818cf8; font-weight:600;">${r.SahayaNidhiCurrent}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155; font-weight:bold; color:#818cf8;">${r.SahayaNidhiTotal}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.loanAmount > 0 ? r.loanAmount : '—'}</td>
-          <td style="text-align:center; padding:8px; border:1px solid #334155; font-size:11px; color:#cbd5e1;">${r.loanIssued}</td>
+          <td style="text-align:center; padding:8px; border:1px solid #334155; font-size:11px; color:#cbd5e1;">${r.loanAmount > 0 ? r.loanIssued : ''}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.loanAmount > 0 ? r.loanRepaid : '—'}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155;">${r.loanAmount > 0 ? r.loanBalance : '—'}</td>
           <td style="text-align:center; padding:8px; border:1px solid #334155; font-weight:800; color:${gBalColor}; background:rgba(255,255,255,0.02);">${r.grandBalance}</td>
@@ -324,7 +340,7 @@ export class ReportsService {
     });
 
     container.innerHTML = `
-      <div style="padding:20px; color:white; font-family:'Inter', sans-serif; background-color:#0b1220; width:1210px;">
+      <div style="width:100%; box-sizing:border-box; color:white; font-family:'Inter', sans-serif; background-color:#0b1220;">
         <div style="text-align:center; margin-bottom:28px;">
           <h1 style="color:#6ea8fe; margin:0; font-size:36px; font-weight:800; letter-spacing:-0.5px;">Avadhi Nidhi</h1>
           <p style="color:#94a3b8; font-size:18px; margin:6px 0 0 0;">Monthly Status Report: <strong style="color:#ffffff;">${monthTitle}</strong></p>
@@ -333,7 +349,7 @@ export class ReportsService {
         <table style="width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; background:#0f172a; border:1px solid #334155;">
           <thead>
             <tr>
-              <th rowspan="2" style="background:#1e293b; color:#6ea8fe; padding:12px 10px; border:1px solid #334155; width:180px; text-align:left;">Member Name</th>
+              <th rowspan="2" style="background:#1e293b; color:#6ea8fe; padding:12px 10px; border:1px solid #334155; width:230px; text-align:center;">Member Name</th>
               <th colspan="3" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">Monthly Payment (Net)</th>
               <th colspan="3" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">SahayaNidhi Fund</th>
               <th colspan="4" style="background:#1e293b; color:#6ea8fe; padding:10px; border:1px solid #334155; text-align:center;">Loan Tracking</th>
@@ -354,11 +370,11 @@ export class ReportsService {
           </thead>
           <tbody>
             ${rowsHtml}
-            <tr style="height:10px;"><td colspan="12" style="background:#0b1220; border:none;"></td></tr>
+            <tr style="height:12px;"><td colspan="12" style="background:#0b1220; border:none;"></td></tr>
             <tr style="background:#1e293b; font-weight:800; border-top:2px solid #6ea8fe; font-size:13px;">
-              <td style="padding:10px 12px; border:1px solid #334155; color:#6ea8fe;">GROUP TOTALS</td>
+              <td style="padding:11px 12px; border:1px solid #334155; color:#6ea8fe; text-align:center;">GROUP TOTALS</td>
               <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.mOB}</td>
-              <td style="text-align:center; padding:10px; border:1px solid #334155; color:#1db954;">${sums.mPaid}</td>
+              <td style="text-align:center; padding:10px; border:1px solid #334155; color:#ffffff;">${sums.mPaid}</td>
               <td style="text-align:center; padding:10px; border:1px solid #334155; color:#6ea8fe;">${sums.mTotal}</td>
               <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.sOB}</td>
               <td style="text-align:center; padding:10px; border:1px solid #334155;">${sums.sPaid}</td>
@@ -374,7 +390,7 @@ export class ReportsService {
 
         <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#64748b;">
           <div>Liquid Bank Cash: <strong style="color:#10b981;">${formatCurrency(fundSummary?.availableLiquidCash || 0)}</strong> | Sahaya Charity Pool: <strong style="color:#818cf8;">${formatCurrency(fundSummary?.availableSahayaPool || 0)}</strong></div>
-          <div>Generated on: ${new Date().toLocaleString()} | Avadhi Nidhi System</div>
+          <div>Generated on: ${new Date().toLocaleString('en-GB')} | Avadhi Nidhi System</div>
         </div>
       </div>
     `;
