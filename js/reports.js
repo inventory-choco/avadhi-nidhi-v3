@@ -287,7 +287,7 @@ export class ReportsService {
     if (fundSummary) {
       text += `*LIQUID TREASURY:*\n`;
       text += `💰 *Available Liquid Cash:* ${formatCurrency(fundSummary.availableLiquidCash)}\n`;
-      text += `🤝 *Sahaya Charity Pool:* ${formatCurrency(fundSummary.availableSahayaPool)}\n`;
+      text += `🤝 *Sahaya Nidhi Pool:* ${formatCurrency(fundSummary.availableSahayaPool)}\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
     }
     text += `_Avadhi Nidhi V3 • Verified via Google Sheets_`;
@@ -389,7 +389,7 @@ export class ReportsService {
         </table>
 
         <div style="margin-top:24px; display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#64748b;">
-          <div>Liquid Bank Cash: <strong style="color:#10b981;">${formatCurrency(fundSummary?.availableLiquidCash || 0)}</strong> | Sahaya Charity Pool: <strong style="color:#818cf8;">${formatCurrency(fundSummary?.availableSahayaPool || 0)}</strong></div>
+          <div>Liquid Bank Cash: <strong style="color:#10b981;">${formatCurrency(fundSummary?.availableLiquidCash || 0)}</strong> | Sahaya Nidhi Pool: <strong style="color:#818cf8;">${formatCurrency(fundSummary?.availableSahayaPool || 0)}</strong></div>
           <div>Generated on: ${new Date().toLocaleString('en-GB')} | Avadhi Nidhi System</div>
         </div>
       </div>

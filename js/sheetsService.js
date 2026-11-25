@@ -51,6 +51,8 @@ class SheetsService {
         if (d.loans) this.saveLocal(APP_CONFIG.storageKeys.cachedLoans, d.loans);
         if (d.config) this.saveLocal(APP_CONFIG.storageKeys.cachedConfig, d.config);
         if (d.sahayaNidhi) this.saveLocal(APP_CONFIG.storageKeys.cachedSahaya, d.sahayaNidhi);
+        if (d.payments2026) this.saveLocal(APP_CONFIG.storageKeys.cachedPayments2026, d.payments2026);
+        if (d.loans2026) this.saveLocal(APP_CONFIG.storageKeys.cachedLoans2026, d.loans2026);
 
         this.notifySyncStatus('synced', 'Synced with Google Sheets • Just now');
 
@@ -60,7 +62,9 @@ class SheetsService {
           transactions: d.transactions || [],
           loans: d.loans || [],
           config: d.config || APP_CONFIG.defaults,
-          sahayaNidhi: d.sahayaNidhi || []
+          sahayaNidhi: d.sahayaNidhi || [],
+          payments2026: d.payments2026 || [],
+          loans2026: d.loans2026 || []
         };
       } else {
         throw new Error(json.message || "Invalid payload format");
@@ -78,7 +82,9 @@ class SheetsService {
         transactions: this.getLocal(APP_CONFIG.storageKeys.cachedTransactions, []),
         loans: this.getLocal(APP_CONFIG.storageKeys.cachedLoans, []),
         config: this.getLocal(APP_CONFIG.storageKeys.cachedConfig, APP_CONFIG.defaults),
-        sahayaNidhi: this.getLocal(APP_CONFIG.storageKeys.cachedSahaya, [])
+        sahayaNidhi: this.getLocal(APP_CONFIG.storageKeys.cachedSahaya, []),
+        payments2026: this.getLocal(APP_CONFIG.storageKeys.cachedPayments2026, []),
+        loans2026: this.getLocal(APP_CONFIG.storageKeys.cachedLoans2026, [])
       };
     }
   }

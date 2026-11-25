@@ -15,8 +15,10 @@ import {
   computeMemberDues,
   calculateSmartAllocation,
   calculateFundSummary,
-  buildMonthlyMatrix
+  buildMonthlyMatrix,
+  computeLoanPriorityList
 } from './calculations.js';
+import { REFERENCE_PAYMENTS_2026, REFERENCE_LOANS_2026 } from './data.js';
 import { ReceiptGenerator } from './receiptGenerator.js';
 import { ReportsService } from './reports.js';
 
@@ -33,6 +35,8 @@ class AvadhiNidhiApp {
       loans: [],
       config: APP_CONFIG.defaults,
       sahayaNidhi: [],
+      payments2026: REFERENCE_PAYMENTS_2026,
+      loans2026: REFERENCE_LOANS_2026,
       isOnline: false,
       isLoading: true,
       lastSynced: null
@@ -160,6 +164,8 @@ class AvadhiNidhiApp {
       this.state.loans = result.loans || [];
       this.state.config = result.config || APP_CONFIG.defaults;
       this.state.sahayaNidhi = result.sahayaNidhi || [];
+      this.state.payments2026 = (result.payments2026 && result.payments2026.length > 0) ? result.payments2026 : REFERENCE_PAYMENTS_2026;
+      this.state.loans2026 = (result.loans2026 && result.loans2026.length > 0) ? result.loans2026 : REFERENCE_LOANS_2026;
       this.state.isOnline = result.isOnline;
       this.state.lastSynced = sheetsService.lastSynced;
 
@@ -269,11 +275,6 @@ class AvadhiNidhiApp {
     const btnAddNewMember = document.getElementById('btn-admin-add-member');
     if (btnAddNewMember) {
       btnAddNewMember.addEventListener('click', () => this.openEditMemberModal());
-    }
-
-    const btnTriggerSahaya = document.getElementById('btn-admin-trigger-sahaya');
-    if (btnTriggerSahaya) {
-      btnTriggerSahaya.addEventListener('click', () => this.handleRunMonthlySahaya());
     }
 
     // Forms Setup
@@ -506,18 +507,84 @@ class AvadhiNidhiApp {
   }
 
   /**
-   * 2. MONTHLY PAYMENTS MATRIX VIEW (Legacy-Compatible with 2026/2027 Tabs)
+   * 2. MONTHLY PAYMENTS MATRIX VIEW (2026 Historical Sheet + 2027 Live Matrix)
    */
   renderMonthlyPayments() {
     const container = document.getElementById('monthly-matrix-container');
     if (!container) return;
+
+    // For 2026, display the 2026_monthly_Payments sheet (with Nov settlement adjustments -> OB Nov-26)
+    if (this.activePaymentsYear === 2026 && this.state.payments2026 && this.state.payments2026.length > 0) {
+      const rows = this.state.payments2026;
+      const monthCols = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const colTotals = { OB: 0, TotalPaid: 0 };
+      monthCols.forEach(m => { colTotals[m] = 0; });
+
+      const tbodyHtml = rows.map(r => {
+        const name = r.Name || r.name || '';
+        const ob = Number(r.OB || 0);
+        const totalPaid = Number(r['Total Paid'] ?? r.totalPaid ?? 0);
+        colTotals.OB += ob;
+        colTotals.TotalPaid += totalPaid;
+
+        const cellsHtml = monthCols.map(m => {
+          const val = Number(r[m] || 0);
+          colTotals[m] += val;
+          if (val < 0) {
+            return `<td class="px-2 py-3 text-center tabular-nums"><span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-rose-500/15 text-rose-500">${val}</span></td>`;
+          }
+          if (val > 0) {
+            return `<td class="px-2 py-3 text-center tabular-nums"><span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">${val}</span></td>`;
+          }
+          return `<td class="px-2 py-3 text-center tabular-nums"><span class="text-slate-300 dark:text-slate-700">—</span></td>`;
+        }).join('');
+
+        return `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-xs">
+            <td class="px-3 py-3 font-bold sticky-col text-slate-900 dark:text-white whitespace-nowrap">${name}</td>
+            <td class="px-3 py-3 text-center font-semibold text-slate-600 dark:text-slate-300 tabular-nums">${ob}</td>
+            ${cellsHtml}
+            <td class="px-3 py-3 text-center font-black ${totalPaid < 0 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'} tabular-nums">${totalPaid}</td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="mb-3 px-4 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
+          <span>ℹ️</span>
+          <span><strong>2026 Historical Ledger (2026_monthly_Payments):</strong> Negative Nov figures reflect cash payouts or loan balance settlements carried into <strong>OB (Nov-26)</strong>.</span>
+        </div>
+        <div class="table-matrix-wrapper border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+          <table class="table-matrix w-full border-collapse">
+            <thead>
+              <tr class="bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                <th class="px-3 py-3 sticky-col text-left">Member Name</th>
+                <th class="px-3 py-3 text-center">OB (2026)</th>
+                ${monthCols.map(m => `<th class="px-3 py-3 text-center ${m === 'Nov' ? 'text-rose-500 font-bold' : ''}">${m}</th>`).join('')}
+                <th class="px-3 py-3 text-center bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-black">OB (Nov-26) / Total Paid</th>
+              </tr>
+            </thead>
+            <tbody>${tbodyHtml}</tbody>
+            <tfoot>
+              <tr class="bg-slate-200 dark:bg-slate-800 font-black text-xs border-t-2 border-emerald-500">
+                <td class="px-3 py-3 sticky-col text-slate-900 dark:text-white">GROUP TOTALS</td>
+                <td class="px-3 py-3 text-center tabular-nums">${colTotals.OB}</td>
+                ${monthCols.map(m => `<td class="px-2 py-3 text-center tabular-nums ${colTotals[m] < 0 ? 'text-rose-500' : ''}">${colTotals[m]}</td>`).join('')}
+                <td class="px-3 py-3 text-center text-emerald-600 dark:text-emerald-400 font-black tabular-nums">${colTotals.TotalPaid}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `;
+      return;
+    }
 
     const matrix = buildMonthlyMatrix(this.state.members, this.state.transactions, this.activePaymentsYear);
 
     let theadHtml = `
       <tr class="bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
         <th class="px-3 py-3 sticky-col text-left">Member Name</th>
-        <th class="px-3 py-3 text-center">OB (Dec-26)</th>
+        <th class="px-3 py-3 text-center">OB (Nov-26)</th>
         ${matrix.months.map(m => `
           <th class="px-3 py-3 text-center ${m.key === matrix.currentMonthKey ? 'col-current-month' : ''}">${m.label}</th>
         `).join('')}
@@ -575,7 +642,7 @@ class AvadhiNidhiApp {
   }
 
   /**
-   * 3. SAHAYANIDHI (CHARITY) VIEW
+   * 3. SAHAYA NIDHI VIEW
    */
   renderSahayaNidhi() {
     const summary = calculateFundSummary(
@@ -600,14 +667,15 @@ class AvadhiNidhiApp {
 
     const records = this.state.sahayaNidhi || [];
     if (records.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">No SahayaNidhi ledger records yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">No Sahaya Nidhi ledger records yet.</td></tr>`;
       return;
     }
 
     records.forEach(r => {
       const tr = document.createElement('tr');
       tr.className = 'border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-xs';
-      const isDisbursed = r.Type === 'Charity Disbursement' || r.type === 'Charity Disbursement';
+      const rType = r.Type || r.type || '';
+      const isDisbursed = rType === 'Charity Disbursement' || rType === 'Sahaya Nidhi Disbursement' || rType === 'Expense';
 
       tr.innerHTML = `
         <td class="px-3 py-2.5 text-slate-500">${formatDate(r.Date || r.date)}</td>
@@ -624,9 +692,12 @@ class AvadhiNidhiApp {
   }
 
   /**
-   * 4. LOANS (EMERGENCY & VACATION) VIEW
+   * 4. LOANS (EMERGENCY & VACATION) VIEW + SMART PRIORITY LIST
    */
   renderLoans() {
+    this.renderLoanPriorityList();
+    this.render2026LoanReference();
+
     const activeContainer = document.getElementById('loans-active-cards');
     if (!activeContainer) return;
     activeContainer.innerHTML = '';
@@ -738,6 +809,131 @@ class AvadhiNidhiApp {
         this.openLoanRepayModal(lId, mem, out);
       });
     });
+  }
+
+  renderLoanPriorityList() {
+    const container = document.getElementById('loans-priority-list');
+    if (!container) return;
+
+    const list = computeLoanPriorityList(
+      this.state.members,
+      this.state.transactions,
+      this.state.loans,
+      this.state.payments2026,
+      this.state.loans2026
+    );
+
+    if (list.length === 0) {
+      container.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">No members loaded yet.</div>`;
+      return;
+    }
+
+    const tierStyles = {
+      TOP_PRIORITY: {
+        badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+        rankBg: 'bg-emerald-600 text-white'
+      },
+      ELIGIBLE: {
+        badge: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30',
+        rankBg: 'bg-blue-600 text-white'
+      },
+      COOLDOWN: {
+        badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+        rankBg: 'bg-amber-500 text-white'
+      },
+      ACTIVE_DUE: {
+        badge: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
+        rankBg: 'bg-rose-600 text-white'
+      }
+    };
+
+    container.innerHTML = list.map(item => {
+      const st = tierStyles[item.tier] || tierStyles.ELIGIBLE;
+      const reasonChips = item.reasons.map(r => `
+        <span class="inline-block px-2 py-0.5 rounded-md text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${r}</span>
+      `).join('');
+
+      return `
+        <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-xl ${st.rankBg} flex items-center justify-center text-xs font-black shrink-0 shadow-sm">
+              #${item.rank}
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-bold text-slate-900 dark:text-white">${item.name}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${st.badge}">${item.tierLabel}</span>
+              </div>
+              <div class="flex flex-wrap gap-1.5 mt-1.5">${reasonChips}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 self-end sm:self-center shrink-0">
+            <div class="text-right">
+              <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Priority Score</span>
+              <span class="text-sm font-black tabular-nums ${item.score >= 600 ? 'text-emerald-600 dark:text-emerald-400' : item.score >= 200 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-500'}">${item.score}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  render2026LoanReference() {
+    const container = document.getElementById('loans-2026-reference');
+    if (!container) return;
+
+    const rows = this.state.loans2026 || [];
+    if (rows.length === 0) {
+      container.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">No 2026_Loan reference rows found.</div>`;
+      return;
+    }
+
+    const cols = ['10-25', '11-25', '12-25', '01-26', '02-26', '03-26', '04-26', '05-26', '06-26', '07-26', '08-26', '09-26', '10-26'];
+    let totalLoan = 0;
+
+    const bodyHtml = rows.map(r => {
+      const amt = Number(r['LOAN AMOUNT'] || 0);
+      totalLoan += amt;
+      const iss = r['LOAN ISSUE DATE'] || '—';
+      const repayCells = cols.map(c => {
+        const v = Number(r[c] || 0);
+        return `<td class="px-2 py-2 text-center tabular-nums ${v > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-300 dark:text-slate-700'}">${v > 0 ? v : '—'}</td>`;
+      }).join('');
+
+      return `
+        <tr class="border-b border-slate-100 dark:border-slate-800 text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800/40">
+          <td class="px-3 py-2 font-bold text-slate-900 dark:text-white whitespace-nowrap sticky left-0 bg-white dark:bg-slate-900">${r.Name || r.name}</td>
+          <td class="px-2 py-2 text-center text-slate-500 whitespace-nowrap">${iss || '—'}</td>
+          <td class="px-2 py-2 text-center font-bold tabular-nums ${amt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}">${amt > 0 ? amt : '—'}</td>
+          ${repayCells}
+        </tr>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <table class="w-full text-left border-collapse whitespace-nowrap">
+        <thead class="bg-slate-50 dark:bg-slate-900/60 text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800">
+          <tr>
+            <th class="px-3 py-2.5 sticky left-0 bg-slate-50 dark:bg-slate-900">Name</th>
+            <th class="px-2 py-2.5 text-center">Issue Date</th>
+            <th class="px-2 py-2.5 text-center">Loan Amt</th>
+            ${cols.map(c => `<th class="px-2 py-2.5 text-center">${c}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>${bodyHtml}</tbody>
+        <tfoot class="bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold">
+          <tr>
+            <td class="px-3 py-2 sticky left-0 bg-slate-100 dark:bg-slate-800">TOTAL (Reference Only)</td>
+            <td class="px-2 py-2"></td>
+            <td class="px-2 py-2 text-center tabular-nums">${totalLoan}</td>
+            ${cols.map(c => {
+              const sum = rows.reduce((a, r) => a + Number(r[c] || 0), 0);
+              return `<td class="px-2 py-2 text-center tabular-nums">${sum > 0 ? sum : '—'}</td>`;
+            }).join('')}
+          </tr>
+        </tfoot>
+      </table>
+    `;
   }
 
   /**
@@ -1150,7 +1346,7 @@ class AvadhiNidhiApp {
           </div>
           <div class="space-y-1 pt-1 text-xs">
             <div class="flex justify-between">
-              <span class="text-indigo-600 dark:text-indigo-400 font-semibold">1. SahayaNidhi Charity:</span>
+              <span class="text-indigo-600 dark:text-indigo-400 font-semibold">1. Sahaya Nidhi:</span>
               <span class="font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">+${formatCurrency(alloc.allocSahaya)}</span>
             </div>
             <div class="flex justify-between">

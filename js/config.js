@@ -40,6 +40,8 @@ export const APP_CONFIG = {
     cachedLoans: "an_cached_loans",
     cachedConfig: "an_cached_config",
     cachedSahaya: "an_cached_sahaya",
+    cachedPayments2026: "an_cached_payments_2026",
+    cachedLoans2026: "an_cached_loans_2026",
     theme: "an_theme_preference",
     lastSynced: "an_last_synced_timestamp"
   }

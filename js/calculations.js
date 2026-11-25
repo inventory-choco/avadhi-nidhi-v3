@@ -238,7 +238,7 @@ export function computeMemberDues(member, transactions, loans, config = APP_CONF
  * SMART PRIORITY WATERFALL ALLOCATION ENGINE (Core Business Logic)
  * 
  * Priorities:
- * 1. Priority 1 — SahayaNidhi (5 AED/month compulsory charity): Clears any unpaid SahayaNidhi dues first.
+ * 1. Priority 1 — Sahaya Nidhi (5 AED/month compulsory): Clears any unpaid Sahaya Nidhi dues first.
  * 2. Priority 2 — Monthly Payment (100 AED/month share + negative OB arrears): Clears monthly dues and arrears.
  * 3. Priority 3 — Active Loan Repayment: Applies remaining payment toward active loan debt.
  * 4. Surplus: If any amount remains after clearing all dues, applies to Monthly Savings advance.
@@ -294,7 +294,7 @@ export function calculateSmartAllocation(totalAmount, dues) {
   }
 
   const allocations = [];
-  if (allocSahaya > 0) allocations.push({ type: "SahayaNidhi", amount: allocSahaya, priority: 1, label: "SahayaNidhi Charity" });
+  if (allocSahaya > 0) allocations.push({ type: "SahayaNidhi", amount: allocSahaya, priority: 1, label: "Sahaya Nidhi" });
   if (allocMonthly > 0) allocations.push({ type: "Monthly Payment", amount: allocMonthly, priority: 2, label: "Monthly Savings Share" });
   if (allocLoan > 0) allocations.push({ type: "Loan Repayment", amount: allocLoan, priority: 3, label: "Active Loan Repayment" });
 
@@ -338,7 +338,7 @@ export function calculateFundSummary(members, transactions, loans, sahayaRecords
   (sahayaRecords || []).forEach(s => {
     const type = s.Type || s.type;
     const amt = Number(s.Amount || s.amount || 0);
-    if (type === 'Charity Disbursement' || type === 'Expense') totalSahayaDisbursed += amt;
+    if (type === 'Charity Disbursement' || type === 'Sahaya Nidhi Disbursement' || type === 'Expense') totalSahayaDisbursed += amt;
   });
 
   const activeLoansOutstanding = Math.max(0, totalLoansIssued - totalLoansRepaid);
@@ -439,4 +439,234 @@ export function buildMonthlyMatrix(members, transactions, year) {
     totalOB,
     grandTotal: totalOB + grandSum
   };
+}
+
+/**
+ * Parse DD-MM-YYYY or YYYY-MM-DD date string safely
+ */
+function parseFlexibleDate(str) {
+  if (!str) return null;
+  const s = String(str).trim();
+  const ddmmyyyy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+  if (ddmmyyyy) {
+    const day = Number(ddmmyyyy[1]);
+    const mon = Number(ddmmyyyy[2]) - 1;
+    let yr = Number(ddmmyyyy[3]);
+    if (yr < 100) yr += 2000;
+    const d = new Date(yr, mon, day);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Convert MM-YY (e.g. "10-25", "06-26") to end-of-month Date
+ */
+function parseMMYYToEndDate(mmYY) {
+  const m = String(mmYY).match(/^(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const mon = Number(m[1]); // 1-12
+  const yr = 2000 + Number(m[2]);
+  return new Date(yr, mon, 0);
+}
+
+/**
+ * SMART LOAN PRIORITY LIST ENGINE
+ *
+ * Criteria (from highest to lowest priority):
+ * 1. Never took a loan (2025, 2026, until now) -> First Priority
+ * 2. Farther from last complete loan closure -> Higher Priority
+ * 3. Farther from last loan request/issue date -> Next Priority
+ * 4. Regular monthly payments -> Boosts priority
+ * 5. Regular loan repayments -> Boosts priority
+ * 6. Closed a loan within the last 3 months -> Cooldown (Least Priority)
+ * 7. Currently has an active loan or unsettled negative balance due -> Least Priority
+ */
+export function computeLoanPriorityList(members, transactions = [], loans = [], payments2026 = [], loans2026 = []) {
+  const now = new Date();
+  const loanRepayCols2026 = ['10-25', '11-25', '12-25', '01-26', '02-26', '03-26', '04-26', '05-26', '06-26', '07-26', '08-26', '09-26', '10-26'];
+  const payMonths2026 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+
+  const results = (members || []).map(member => {
+    const name = member.Name || member.name;
+    const ob = Number(member['OB from Dec-2026'] ?? member.ob ?? 0);
+
+    // 1. Historical 2026_Loan record (reference only)
+    const histLoan = (loans2026 || []).find(l => (l.Name || l.name) === name) || null;
+    const histAmt = histLoan ? Number(histLoan['LOAN AMOUNT'] || 0) : 0;
+    const histIssueDate = histLoan ? parseFlexibleDate(histLoan['LOAN ISSUE DATE']) : null;
+
+    let histRepaid = 0;
+    let histRepayMonths = 0;
+    let lastHistRepayCol = null;
+    if (histLoan && histAmt > 0) {
+      loanRepayCols2026.forEach(col => {
+        const val = Number(histLoan[col] || 0);
+        if (val > 0) {
+          histRepaid += val;
+          histRepayMonths++;
+          lastHistRepayCol = col;
+        }
+      });
+    }
+    const histClosed = histAmt > 0 && histRepaid >= histAmt;
+    const histClosureDate = histClosed && lastHistRepayCol ? parseMMYYToEndDate(lastHistRepayCol) : null;
+
+    // 2. Live LoansDB records
+    const dbLoans = (loans || []).filter(l => (l.Member_Name || l.memberName) === name);
+    let activeDbLoan = null;
+    let latestClosedDbLoan = null;
+    let latestDbIssueDate = null;
+
+    dbLoans.forEach(l => {
+      const p = Number(l.Principal || l.principal || l.Amount || l.amount || 0);
+      const rep = Number(l.Repaid_Amount || l.repaidAmount || 0);
+      const status = l.Status || l.status;
+      const iss = parseFlexibleDate(l.Issue_Date || l.issueDate);
+      if (iss && (!latestDbIssueDate || iss > latestDbIssueDate)) {
+        latestDbIssueDate = iss;
+      }
+      if (status !== 'Repaid' && rep < p) {
+        activeDbLoan = { principal: p, repaid: rep, outstanding: p - rep, issueDate: iss };
+      } else if (p > 0) {
+        latestClosedDbLoan = l;
+      }
+    });
+
+    // 3. Monthly payment regularity (2026_monthly_Payments + live TransactionsDB)
+    const histPayRow = (payments2026 || []).find(p => (p.Name || p.name) === name) || null;
+    let paidMonthsCount = 0;
+    let totalExpectedMonths = 0;
+    if (histPayRow) {
+      payMonths2026.forEach(m => {
+        totalExpectedMonths++;
+        if (Number(histPayRow[m] || 0) > 0) paidMonthsCount++;
+      });
+    }
+    const liveMonthlyTx = (transactions || []).filter(
+      t => (t.Member_Name || t.memberName) === name && (t.Type || t.type) === 'Monthly Payment' && Number(t.Amount || t.amount || 0) > 0
+    );
+    const liveMonthsSet = new Set(liveMonthlyTx.map(t => String(t.Date || t.date || '').slice(0, 7)));
+    if (liveMonthsSet.size > 0) {
+      paidMonthsCount += liveMonthsSet.size;
+      totalExpectedMonths += liveMonthsSet.size;
+    }
+    const monthlyRegularityPct = totalExpectedMonths > 0 ? Math.round((paidMonthsCount / totalExpectedMonths) * 100) : 100;
+
+    // 4. Determine Loan Status, Closure Date & Issue Date across 2025-Present
+    const everTookLoan = histAmt > 0 || dbLoans.length > 0;
+    const latestIssueDate = latestDbIssueDate && (!histIssueDate || latestDbIssueDate > histIssueDate)
+      ? latestDbIssueDate
+      : histIssueDate;
+
+    const latestClosureDate = latestClosedDbLoan
+      ? (parseFlexibleDate(latestClosedDbLoan.Closed_Date || latestClosedDbLoan.Issue_Date) || histClosureDate)
+      : histClosureDate;
+
+    const monthsDiff = (d1, d2) => (d1.getFullYear() - d2.getFullYear()) * 12 + (d1.getMonth() - d2.getMonth());
+    const monthsSinceIssue = latestIssueDate ? Math.max(0, monthsDiff(now, latestIssueDate)) : null;
+    const monthsSinceClosure = latestClosureDate ? Math.max(0, monthsDiff(now, latestClosureDate)) : null;
+
+    // Check if member currently has an active loan or unsettled balance due
+    const hasUnsettled2026Due = histAmt > 0 && !histClosed && ob <= 0;
+    const hasActiveDue = Boolean(activeDbLoan) || ob < 0 || hasUnsettled2026Due;
+
+    // Loan repayment regularity score
+    let loanRepayRegularity = 0;
+    if (histAmt > 0) {
+      if (histClosed && histRepayMonths >= 4) loanRepayRegularity = 50;
+      else if (histClosed && histRepayMonths >= 2) loanRepayRegularity = 35;
+      else if (histClosed) loanRepayRegularity = 20;
+      else if (histRepaid > 0) loanRepayRegularity = 15;
+    }
+
+    // 5. Tier Classification & Smart Score
+    let tier = 'ELIGIBLE';
+    let tierRank = 3;
+    let tierLabel = 'Eligible';
+    let score = 0;
+    const reasons = [];
+
+    if (!everTookLoan && !hasActiveDue) {
+      tier = 'TOP_PRIORITY';
+      tierRank = 4;
+      tierLabel = '1st Priority • Never Took a Loan';
+      score = 1000 + monthlyRegularityPct + (ob >= 500 ? 20 : 0);
+      reasons.push('Never took a loan (2025–2026)');
+      reasons.push(`Monthly regularity: ${monthlyRegularityPct}% (${paidMonthsCount}/${totalExpectedMonths || 1} mos)`);
+      reasons.push(`Current OB: ${ob} AED`);
+    } else if (hasActiveDue) {
+      tier = 'ACTIVE_DUE';
+      tierRank = 1;
+      tierLabel = 'Least Priority • Active Loan / Dues Pending';
+      score = -500 + ob + monthlyRegularityPct * 0.5;
+      if (activeDbLoan) {
+        reasons.push(`Active loan balance: ${activeDbLoan.outstanding} AED`);
+      }
+      if (ob < 0) {
+        reasons.push(`Negative OB arrears: ${ob} AED`);
+      } else if (hasUnsettled2026Due) {
+        const remainingHist = Math.max(0, histAmt - histRepaid);
+        reasons.push(`Unclosed 2026 loan (${remainingHist} AED) / 0 OB`);
+      }
+      reasons.push(`Monthly regularity: ${monthlyRegularityPct}%`);
+    } else if (monthsSinceClosure !== null && monthsSinceClosure <= 3) {
+      tier = 'COOLDOWN';
+      tierRank = 2;
+      tierLabel = `Cooldown • Closed ${monthsSinceClosure} mo${monthsSinceClosure === 1 ? '' : 's'} ago (< 3 mos)`;
+      score = 200 + monthsSinceClosure * 10 + monthlyRegularityPct * 0.5 + loanRepayRegularity;
+      reasons.push(`Closed loan ${monthsSinceClosure} mo${monthsSinceClosure === 1 ? '' : 's'} ago (3-mo cooldown)`);
+      if (histRepayMonths > 0) {
+        reasons.push(`Regular loan repayments (${histRepayMonths} installments)`);
+      }
+      reasons.push(`Monthly regularity: ${monthlyRegularityPct}%`);
+    } else {
+      tier = 'ELIGIBLE';
+      tierRank = 3;
+      const closureMos = monthsSinceClosure !== null ? monthsSinceClosure : (monthsSinceIssue || 0);
+      const issueMos = monthsSinceIssue !== null ? monthsSinceIssue : 0;
+      tierLabel = monthsSinceClosure !== null
+        ? `Eligible • Closed ${monthsSinceClosure} mos ago`
+        : `Eligible • Last request ${issueMos} mos ago`;
+      score = 600 + closureMos * 15 + issueMos * 5 + monthlyRegularityPct * 0.8 + loanRepayRegularity;
+      if (monthsSinceClosure !== null) {
+        reasons.push(`Loan closed ${monthsSinceClosure} mos ago`);
+      }
+      if (monthsSinceIssue !== null) {
+        reasons.push(`Last loan issued ${issueMos} mos ago`);
+      }
+      if (histRepayMonths > 0) {
+        reasons.push(`Repaid regularly (${histRepayMonths} installments)`);
+      }
+      reasons.push(`Monthly regularity: ${monthlyRegularityPct}%`);
+    }
+
+    return {
+      name,
+      ob,
+      tier,
+      tierRank,
+      tierLabel,
+      score: Math.round(score),
+      monthlyRegularityPct,
+      everTookLoan,
+      hasActiveDue,
+      monthsSinceClosure,
+      monthsSinceIssue,
+      reasons
+    };
+  });
+
+  // Sort highest priority first
+  results.sort((a, b) => {
+    if (b.tierRank !== a.tierRank) return b.tierRank - a.tierRank;
+    if (b.score !== a.score) return b.score - a.score;
+    return a.name.localeCompare(b.name);
+  });
+
+  return results.map((item, idx) => ({
+    rank: idx + 1,
+    ...item
+  }));
 }

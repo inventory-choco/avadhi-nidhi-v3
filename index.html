@@ -213,14 +213,14 @@
             <p class="text-[11px] text-slate-500 mt-1">Sum of member opening + monthly savings</p>
           </div>
 
-          <!-- Card 3: SahayaNidhi Charity Pool -->
+          <!-- Card 3: Sahaya Nidhi Pool -->
           <div class="card-surface p-5">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">SahayaNidhi Charity Pool</span>
+              <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Sahaya Nidhi Pool</span>
               <span class="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-lg">🤝</span>
             </div>
             <div id="dash-kpi-sahaya" class="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2 tabular-nums">0 AED</div>
-            <p class="text-[11px] text-slate-500 mt-1">5 AED monthly compulsory charity pool</p>
+            <p class="text-[11px] text-slate-500 mt-1">5 AED auto-deducted 1st of every month</p>
           </div>
 
           <!-- Card 4: Active Loans Outstanding -->
@@ -270,7 +270,7 @@
               <thead class="bg-slate-50 dark:bg-slate-900/60 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th class="px-4 py-3">Member Name</th>
-                  <th class="px-4 py-3">OB (Dec-26)</th>
+                  <th class="px-4 py-3">OB (Nov-26)</th>
                   <th class="px-4 py-3">Net Savings</th>
                   <th class="px-4 py-3">Sahaya Fund</th>
                   <th class="px-4 py-3">Active Loan</th>
@@ -315,27 +315,27 @@
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="card-surface p-5 bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800">
-            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">SahayaNidhi Pool Balance</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Sahaya Nidhi Pool Balance</span>
             <div id="sahaya-tab-pool" class="text-3xl font-black text-slate-900 dark:text-white mt-1 tabular-nums">0 AED</div>
-            <p class="text-[11px] text-slate-500 mt-1">Dedicated fund balance reserved for charity</p>
+            <p class="text-[11px] text-slate-500 mt-1">Dedicated Sahaya Nidhi fund balance</p>
           </div>
           <div class="card-surface p-5">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Collected (5 AED / Mo)</span>
             <div id="sahaya-tab-collected" class="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">0 AED</div>
-            <p class="text-[11px] text-slate-500 mt-1">Accumulated compulsory member deductions</p>
+            <p class="text-[11px] text-slate-500 mt-1">Auto-deducted 1st of every month (once/month)</p>
           </div>
           <div class="card-surface p-5">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Charity Disbursed</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Sahaya Nidhi Disbursed</span>
             <div id="sahaya-tab-disbursed" class="text-2xl font-black text-rose-500 mt-1 tabular-nums">0 AED</div>
-            <p class="text-[11px] text-slate-500 mt-1">Total welfare aid distributed</p>
+            <p class="text-[11px] text-slate-500 mt-1">Total Sahaya Nidhi aid distributed</p>
           </div>
         </div>
 
         <!-- Sahaya Ledger Table -->
         <div class="card-surface overflow-hidden">
           <div class="p-4 border-b border-slate-200 dark:border-slate-800">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white">SahayaNidhi Audit Ledger</h3>
-            <p class="text-xs text-slate-500">Every 5 AED deduction and charity grant recorded transparently</p>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Sahaya Nidhi Audit Ledger</h3>
+            <p class="text-xs text-slate-500">Every automatic 5 AED deduction and Sahaya Nidhi disbursement recorded transparently</p>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left">
@@ -390,6 +390,40 @@
         <div class="space-y-3">
           <h3 class="text-base font-bold text-slate-900 dark:text-white">Active Outstanding Loans</h3>
           <div id="loans-active-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Smart Loan Priority List -->
+        <div class="card-surface overflow-hidden">
+          <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>🎯</span><span>Smart Loan Priority List</span>
+              </h3>
+              <p class="text-xs text-slate-500">Ranked automatically from highest to lowest eligibility using 2025–2026 loan history, closure cooldowns, monthly payment regularity & active dues</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 self-start sm:self-center">
+              Live Priority Engine
+            </span>
+          </div>
+          <div id="loans-priority-list" class="divide-y divide-slate-100 dark:divide-slate-800">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- 2026 Historical Loan Reference (Read-Only) -->
+        <div class="card-surface overflow-hidden">
+          <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>📜</span><span>2026 Historical Loan Reference (2026_Loan)</span>
+              </h3>
+              <p class="text-xs text-slate-500">Reference-only 2025–2026 loan & repayment ledger (already adjusted in Nov-26 Opening Balance; not added to active totals)</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">Reference Only</span>
+          </div>
+          <div id="loans-2026-reference" class="overflow-x-auto">
             <!-- Rendered via JS -->
           </div>
         </div>
@@ -571,9 +605,9 @@
               <p class="text-xs text-emerald-700 dark:text-emerald-400">Strictly visible to verified Fund Administrators</p>
             </div>
           </div>
-          <button id="btn-admin-trigger-sahaya" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm">
-            Run Monthly 5 AED Deduction
-          </button>
+          <div class="px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1.5">
+            <span>⚡</span><span>Sahaya Nidhi Auto-Deduction: 1st of Every Month (5 AED)</span>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -38,7 +38,7 @@ export const INITIAL_TRANSACTIONS = [
     amount: 5,
     updatedBy: "Shuhaib Muhammed C.",
     updatedDate: "2026-11-01 10:00:00",
-    notes: "Nov 2026 SahayaNidhi Charity Deduction"
+    notes: "Nov 2026 Sahaya Nidhi Deduction"
   },
   {
     date: "2026-11-01",
@@ -56,7 +56,7 @@ export const INITIAL_TRANSACTIONS = [
     amount: 5,
     updatedBy: "Shuhaib Muhammed C.",
     updatedDate: "2026-11-01 10:15:00",
-    notes: "Nov 2026 SahayaNidhi Charity Deduction"
+    notes: "Nov 2026 Sahaya Nidhi Deduction"
   }
 ];
 
@@ -68,7 +68,7 @@ export const INITIAL_SAHAYA_RECORDS = [
     type: "Monthly Deduction",
     memberName: "Ashraf Kannur",
     amount: 5,
-    beneficiaryOrCause: "Monthly Charity Contribution",
+    beneficiaryOrCause: "Monthly Sahaya Nidhi Contribution",
     updatedBy: "Shuhaib Muhammed C.",
     notes: "November Contribution"
   },
@@ -77,10 +77,46 @@ export const INITIAL_SAHAYA_RECORDS = [
     type: "Monthly Deduction",
     memberName: "Shuhaib Muhammed C.",
     amount: 5,
-    beneficiaryOrCause: "Monthly Charity Contribution",
+    beneficiaryOrCause: "Monthly Sahaya Nidhi Contribution",
     updatedBy: "Shuhaib Muhammed C.",
     notes: "November Contribution"
   }
+];
+
+// Reference-only 2026 Monthly Payments (matches Google Sheet: 2026_monthly_Payments)
+export const REFERENCE_PAYMENTS_2026 = [
+  { SN: 1, Name: "Ashraf Kannur", "Total Paid": 500, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 105, Oct: 105, Nov: -1940, Dec: 0 },
+  { SN: 2, Name: "Usman Ollassery", "Total Paid": 0, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 105, Oct: 105, Nov: -2440, Dec: 0 },
+  { SN: 3, Name: "Kasim Tirur", "Total Paid": -315, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 0, Oct: 0, Nov: -2545, Dec: 0 },
+  { SN: 4, Name: "Naseef", "Total Paid": 500, OB: 1400, Jan: 0, Feb: 200, Mar: 0, Apr: 210, May: 0, Jun: 210, Jul: 105, Aug: 105, Sep: 0, Oct: 315, Nov: -2045, Dec: 0 },
+  { SN: 5, Name: "Shuhaib Muhammed C.", "Total Paid": 500, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 105, Oct: 105, Nov: -1940, Dec: 0 },
+  { SN: 6, Name: "Hashim", "Total Paid": -25, OB: 1400, Jan: 100, Feb: 0, Mar: 0, Apr: 0, May: 310, Jun: 0, Jul: 0, Aug: 0, Sep: 0, Oct: 210, Nov: -2045, Dec: 0 },
+  { SN: 7, Name: "Shahid (Muthu)", "Total Paid": 500, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 0, Sep: 0, Oct: 0, Nov: -1625, Dec: 0 },
+  { SN: 8, Name: "Mubarak", "Total Paid": 500, OB: 1400, Jan: 0, Feb: 200, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 105, Oct: 105, Nov: -1940, Dec: 0 },
+  { SN: 9, Name: "Irshad", "Total Paid": 500, OB: 1400, Jan: 0, Feb: 200, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 105, Oct: 105, Nov: -1940, Dec: 0 },
+  { SN: 10, Name: "Sidheeq Kv C/O Kasim", "Total Paid": -315, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 0, Oct: 0, Nov: -2545, Dec: 0 },
+  { SN: 11, Name: "Shihab C/O Kasim", "Total Paid": 495, OB: 900, Jan: 600, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 105, Oct: 105, Nov: -1945, Dec: 0 },
+  { SN: 12, Name: "Shahana Usman C/O Usman", "Total Paid": 0, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 105, Oct: 105, Nov: -2440, Dec: 0 },
+  { SN: 13, Name: "Jamal Kk C/O Usman", "Total Paid": 500, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 105, Jul: 105, Aug: 105, Sep: 105, Oct: 105, Nov: -1940, Dec: 0 },
+  { SN: 14, Name: "Irshad Tirur C/O Kasim", "Total Paid": -630, OB: 1400, Jan: 100, Feb: 100, Mar: 105, Apr: 105, May: 105, Jun: 0, Jul: 0, Aug: 0, Sep: 0, Oct: 0, Nov: -2545, Dec: 0 }
+];
+
+// Reference-only 2026 Loan Sheet (matches Google Sheet: 2026_Loan) — NOT added to active balances
+export const REFERENCE_LOANS_2026 = [
+  { SN: 1, Name: "Ashraf Kannur", "LOAN ISSUE DATE": "", "LOAN AMOUNT": 0 },
+  { SN: 2, Name: "Usman Ollassery", "LOAN ISSUE DATE": "01-10-2026", "LOAN AMOUNT": 2500 },
+  { SN: 3, Name: "Kasim Tirur", "LOAN ISSUE DATE": "03-06-2026", "LOAN AMOUNT": 2500 },
+  { SN: 4, Name: "Naseef", "LOAN ISSUE DATE": "22-07-2026", "LOAN AMOUNT": 2500, "10-26": 1000 },
+  { SN: 5, Name: "Shuhaib Muhammed C.", "LOAN ISSUE DATE": "01-04-2026", "LOAN AMOUNT": 2500, "06-26": 500, "07-26": 500, "08-26": 500, "09-26": 500, "10-26": 500 },
+  { SN: 6, Name: "Hashim", "LOAN ISSUE DATE": "25-12-2026", "LOAN AMOUNT": 2000 },
+  { SN: 7, Name: "Shahid (Muthu)", "LOAN ISSUE DATE": "", "LOAN AMOUNT": 0 },
+  { SN: 8, Name: "Mubarak", "LOAN ISSUE DATE": "07-09-2025", "LOAN AMOUNT": 2000, "10-25": 200, "11-25": 200, "12-25": 200, "02-26": 200, "04-26": 190, "05-26": 190, "06-26": 820 },
+  { SN: 9, Name: "Irshad", "LOAN ISSUE DATE": "", "LOAN AMOUNT": 0 },
+  { SN: 10, Name: "Sidheeq Kv C/O Kasim", "LOAN ISSUE DATE": "27-08-2026", "LOAN AMOUNT": 2500 },
+  { SN: 11, Name: "Shihab C/O Kasim", "LOAN ISSUE DATE": "13-07-2025", "LOAN AMOUNT": 2000, "02-26": 500, "03-26": 500, "04-26": 500, "05-26": 500 },
+  { SN: 12, Name: "Shahana Usman C/O Usman", "LOAN ISSUE DATE": "01-10-2026", "LOAN AMOUNT": 2500 },
+  { SN: 13, Name: "Jamal Kk C/O Usman", "LOAN ISSUE DATE": "25-12-2025", "LOAN AMOUNT": 2000, "02-26": 400, "04-26": 400, "05-26": 400, "06-26": 400, "07-26": 400 },
+  { SN: 14, Name: "Irshad Tirur C/O Kasim", "LOAN ISSUE DATE": "16-05-2026", "LOAN AMOUNT": 2500 }
 ];
 
 export const APP_CONFIG = {

@@ -21,6 +21,8 @@ const SHEET_TRANSACTIONS = "TransactionsDB";
 const SHEET_LOANS = "LoansDB";
 const SHEET_CONFIG = "ConfigDB";
 const SHEET_SAHAYA = "SahayaNidhiDB";
+const SHEET_PAYMENTS_2026 = "2026_monthly_Payments";
+const SHEET_LOANS_2026 = "2026_Loan";
 
 // Default Configuration
 const DEFAULT_CONFIG = {
@@ -46,6 +48,10 @@ function doGet(e) {
     const loans = getSheetData(ss.getSheetByName(SHEET_LOANS));
     const config = getConfigData(ss.getSheetByName(SHEET_CONFIG));
     const sahaya = getSheetData(ss.getSheetByName(SHEET_SAHAYA));
+    const payments2026Sheet = ss.getSheetByName(SHEET_PAYMENTS_2026);
+    const loans2026Sheet = ss.getSheetByName(SHEET_LOANS_2026);
+    const payments2026 = payments2026Sheet ? getSheetData(payments2026Sheet) : [];
+    const loans2026 = loans2026Sheet ? getSheetData(loans2026Sheet) : [];
 
     const response = {
       status: "success",
@@ -55,7 +61,9 @@ function doGet(e) {
         transactions: transactions,
         loans: loans,
         config: config,
-        sahayaNidhi: sahaya
+        sahayaNidhi: sahaya,
+        payments2026: payments2026,
+        loans2026: loans2026
       }
     };
 
@@ -306,7 +314,7 @@ function ensureMonthlySahayaNidhiDeductions(ss) {
             "Compulsory Monthly Deduction",
             name,
             5,
-            `Monthly Charity Deduction (${monthKey})`,
+            `Monthly Sahaya Nidhi Deduction (${monthKey})`,
             "SYSTEM_AUTO",
             "Auto 1st-of-month deduction"
           ]);
@@ -567,7 +575,7 @@ function repayLoan(ss, data) {
 }
 
 /**
- * Record Sahaya Expense / Charity Disbursement
+ * Record Sahaya Nidhi Disbursement
  */
 function recordSahayaExpense(ss, data) {
   const date = data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
@@ -577,7 +585,7 @@ function recordSahayaExpense(ss, data) {
   const sahSheet = ss.getSheetByName(SHEET_SAHAYA);
   sahSheet.appendRow([
     date,
-    "Charity Disbursement",
+    "Sahaya Nidhi Disbursement",
     "-",
     Number(data.amount),
     data.beneficiaryOrCause,
